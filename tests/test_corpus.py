@@ -202,6 +202,46 @@ def test_hash_changes_when_a_manifest_changes(tmp_corpus):
     assert corpus_hash(load_corpus(root)) != before
 
 
+def test_hash_covers_the_shared_harness_at_the_corpus_root(tmp_corpus):
+    """REGRESSION (R4): `specimens/_base.py` was excluded from the hash.
+
+    `_base.py` is the module every specimen imports to produce its `tools/list` response.
+    Hashing only specimen directories left it out, so a change that stopped every
+    hidden-content specimen serving anything hidden produced a byte-identical hash. Two
+    result documents would cite the same corpus and describe different corpora — the exact
+    comparison R4 exists to make safe.
+    """
+    root = tmp_corpus([POISONED, TWIN])
+    shared = root / "_base.py"
+    shared.write_text("# shared harness\n", encoding="utf-8")
+
+    before = corpus_hash(load_corpus(root))
+    shared.write_text("# shared harness, edited\n", encoding="utf-8")
+    after = corpus_hash(load_corpus(root))
+
+    assert before != after, (
+        "editing the shared harness did not move the corpus hash — R4 is defeated"
+    )
+
+
+def test_hash_covers_the_corpus_version_file(tmp_corpus):
+    root = tmp_corpus([POISONED, TWIN], version="1.0.0")
+    before = corpus_hash(load_corpus(root))
+    (root / "CORPUS_VERSION").write_text("2.0.0\n", encoding="utf-8")
+    assert corpus_hash(load_corpus(root)) != before
+
+
+def test_shared_root_file_cannot_collide_with_a_specimen_file(tmp_corpus):
+    """Shared files carry their own record tag, so identical names cannot alias."""
+    a = tmp_corpus([POISONED, TWIN], root_name="a")
+    (a / "_base.py").write_text("X", encoding="utf-8")
+
+    b = tmp_corpus([{**POISONED, "server_text": "X"}, TWIN], root_name="b")
+    (b / "_base.py").write_text("", encoding="utf-8")
+
+    assert corpus_hash(load_corpus(a)) != corpus_hash(load_corpus(b))
+
+
 def test_hash_ignores_specimen_ordering(tmp_corpus):
     """Two corpora with the same content built in different order hash identically."""
     a = tmp_corpus([POISONED, TWIN], root_name="a")

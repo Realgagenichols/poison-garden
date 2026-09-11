@@ -4,9 +4,9 @@
 and find out what you catch.**
 
 > ⚠️ This repository contains intentionally malicious MCP servers, for defensive security
-> testing. They are demonstrative, not weaponized: every specimen is inert outside the
-> harness, reads only decoy credentials from a throwaway home directory, and sends nothing
-> anywhere but a loopback sink. See [Safety](#safety).
+> testing. **The specimens shipped here** are demonstrative rather than weaponized — they
+> read only decoy credentials and attempt no real network egress, and that is enforced by
+> tests. **The harness is not a sandbox.** Read [Safety](#safety) before running anything.
 
 ---
 
@@ -82,13 +82,33 @@ These are enforced in CI, not promised in prose:
 
 ## Safety
 
-- Specimens read **decoy** credentials from a throwaway home directory created by the runner.
-  No specimen reads any real path under your home directory.
-- Egress attempts target a **loopback sink** supplied by the runner. No specimen contains a
-  public hostname or IP address.
+**The harness is not a sandbox.** It is important to be exact about this, because the
+repository contains deliberately malicious code and you are entitled to know what does and
+does not protect you.
+
+What the harness *does*: it runs each specimen with `$HOME` pointed at a throwaway directory
+seeded with fake credentials, hands it a loopback address to "exfiltrate" to, and strips the
+environment down to a short allowlist.
+
+What it *does not* do: contain the process. `$HOME` substitution is a naming convention, not
+a jail. A program that consults the passwd database (`pwd.getpwuid`), expands `~username`, or
+simply opens an absolute path reaches your real home directory regardless — there is no
+seatbelt, no namespace, and no filesystem restriction. We measured this rather than assuming
+it; see `poison_garden/runner/sandbox.py`.
+
+So the guarantee is about **these specimens**, not about arbitrary ones:
+
+- Every specimen in this corpus reads only decoys and attempts egress only to loopback.
+  That is enforced by tests (`tests/test_sandbox.py`) which grep every shipped specimen for
+  each known way around the substitution, and which are themselves checked against a list of
+  measured bypasses so the guard cannot quietly stop catching anything.
 - Specimens demonstrate the *detectable signal* of an attack class. They are not working
   exploits and are useless lifted out of the corpus.
-- The harness is the only supported way to run them.
+
+**Therefore: do not run third-party or modified specimens under this harness.** If you add a
+specimen, the guard checks it — but the guard is a source scan, and a source scan is a
+weaker thing than containment. Real isolation (a seatbelt profile or container) is a tracked
+requirement, not a shipped feature.
 
 ## Development
 

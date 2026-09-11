@@ -206,14 +206,77 @@ def test_no_specimen_contacts_a_real_host(source: Path):
     )
 
 
+# Every way a specimen could reach the REAL home or a real host despite the $HOME
+# substitution. This list exists because the substitution is a naming convention, not a
+# jail: `pwd.getpwuid()` and `expanduser("~user")` read the passwd database and ignore
+# $HOME entirely, and an allowlisted PATH hands over the real home path as a string.
+# Each entry was measured escaping the harness before being added here.
+_ESCAPE_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    (re.compile(r"\bpwd\.getpw"), "pwd.getpw* reads the passwd database and ignores $HOME"),
+    (re.compile(r"\bexpanduser\b"), "expanduser('~user') resolves the REAL home"),
+    (re.compile(r"/Users/"), "absolute macOS home path"),
+    (re.compile(r"/home/"), "absolute Linux home path"),
+    (re.compile(r"\bos\.environ\[[\"']PATH"), "mining PATH for the real home"),
+    (re.compile(r"\bgetpass\.getuser\b"), "username lookup feeding a ~user expansion"),
+    (re.compile(r"\bpathlib\.Path\.home\b"), "Path.home() bypasses if $HOME is unset"),
+    (re.compile(r"\bwss?://"), "websocket egress to a non-loopback host"),
+    (re.compile(r"\bsocket\.gethostbyname\b"), "DNS resolution of a real host"),
+]
+
+
 @pytest.mark.parametrize("source", _shipped_specimen_sources(), ids=lambda p: p.name)
-def test_no_specimen_hardcodes_a_real_home_path(source: Path):
-    """A specimen must reach credentials via $HOME, never via an absolute real path."""
+def test_no_specimen_escapes_the_home_substitution(source: Path):
+    """A specimen must reach credentials via $HOME, never around it.
+
+    The harness substitutes $HOME; it does NOT contain the process. So a specimen that
+    consults the passwd database, expands `~username`, or reads an absolute home path
+    reaches the real user's credentials with every test still green. This grep is the
+    only thing enforcing that for shipped specimens — see `S2` in SPEC.md and the
+    "Safety" section of the README, which are explicit that the harness is not a jail.
+    """
     text = source.read_text(encoding="utf-8")
-    assert "/Users/" not in text, f"{source.name} hardcodes an absolute /Users/ path"
-    assert "os.path.expanduser" not in text, (
-        f"{source.name} uses expanduser; use $HOME so the sandbox can substitute it"
+    hits = [why for pattern, why in _ESCAPE_PATTERNS if pattern.search(text)]
+    assert not hits, f"{source.name} can escape the $HOME substitution: {hits}"
+
+
+@pytest.mark.parametrize("source", _shipped_specimen_sources(), ids=lambda p: p.name)
+def test_no_specimen_names_a_bare_external_host(source: Path):
+    """A hostname need not carry a scheme to be an egress target."""
+    text = source.read_text(encoding="utf-8")
+    bare = re.findall(r"[\"']([a-z0-9-]+(?:\.[a-z0-9-]+){1,})[\"']", text, re.I)
+    offenders = [
+        host
+        for host in bare
+        if not host.endswith((".py", ".toml", ".json", ".md", ".txt", ".yml", ".yaml"))
+        and host.lower() not in _ALLOWED_HOSTS
+        and re.search(r"\.(io|com|net|org|dev|sh|co|ai|app|cloud)$", host, re.I)
+    ]
+    assert not offenders, (
+        f"{source.name} names external host(s) {offenders}; specimens reach loopback only"
     )
+
+
+def test_the_escape_guard_actually_catches_escapes(tmp_path: Path):
+    """P31/P50: a grep-based guard that has never been shown to fire is decoration.
+
+    Feeds each measured bypass through the same patterns the guard uses and asserts every
+    one is caught. Without this, broadening the guard would be unfalsifiable.
+    """
+    bypasses = {
+        "pwd bypass": "import pwd, os\nhome = pwd.getpwuid(os.getuid()).pw_dir\n",
+        "named tilde": "import os.path, getpass\nos.path.expanduser('~' + getpass.getuser())\n",
+        "linux home": "open('/home/ci/.aws/credentials')\n",
+        "macos home": "open('/Users/someone/.ssh/id_rsa')\n",
+        "path mining": "import os\nos.environ['PATH'].split(':')\n",
+        "websocket egress": "URL = 'wss://drop.example-attacker.io/ingest'\n",
+        "Path.home": "import pathlib\npathlib.Path.home()\n",
+    }
+    missed = [
+        label
+        for label, code in bypasses.items()
+        if not any(pattern.search(code) for pattern, _ in _ESCAPE_PATTERNS)
+    ]
+    assert not missed, f"the escape guard misses these known bypasses: {missed}"
 
 
 # --- N3: determinism ---------------------------------------------------------------------

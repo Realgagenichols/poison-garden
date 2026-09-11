@@ -26,14 +26,30 @@ _IGNORED_DIRS = frozenset({"__pycache__"})
 
 
 def corpus_hash(corpus: Corpus) -> str:
-    """Stable content hash over every specimen in the corpus.
+    """Stable content hash over everything that determines what the corpus SERVES.
 
     Independent of directory iteration order: specimens are sorted by id and each
     specimen's files are sorted by their path relative to the specimen directory.
+
+    **Shared root files are hashed too, and that is not incidental.** `specimens/_base.py`
+    is the harness every specimen imports to produce its `tools/list` response. Hashing
+    only specimen directories left it out, so editing `_base.py` — even in a way that
+    stopped every hidden-content specimen serving anything hidden — produced a
+    byte-identical corpus hash. Two result documents would then cite the same hash while
+    describing materially different corpora, which is exactly the comparison R4 exists to
+    make safe.
     """
     digest = hashlib.new(HASH_ALGORITHM)
-    _feed(digest, b"poison-garden-corpus-v1")
+    _feed(digest, b"poison-garden-corpus-v2")
 
+    # Shared harness and metadata first, under their own record tag so a file named
+    # `_base.py` at the root can never collide with one inside a specimen.
+    _feed(digest, b"shared")
+    for rel_path, content in _shared_root_files(corpus.root):
+        _feed(digest, rel_path.encode("utf-8"))
+        _feed(digest, content)
+
+    _feed(digest, b"specimens")
     for specimen in sorted(corpus.specimens, key=lambda s: s.id):
         _feed(digest, specimen.id.encode("utf-8"))
         for rel_path, content in _specimen_files(specimen):
@@ -41,6 +57,32 @@ def corpus_hash(corpus: Corpus) -> str:
             _feed(digest, content)
 
     return _DIGEST_PREFIX + digest.hexdigest()
+
+
+def _shared_root_files(root: Path) -> list[tuple[str, bytes]]:
+    """Files at the corpus root that every specimen depends on.
+
+    Everything directly under the root that is not a specimen directory: the `_`-prefixed
+    harness modules the loader deliberately skips, plus `CORPUS_VERSION`.
+    """
+    out: list[tuple[str, bytes]] = []
+    for path in sorted(root.iterdir()):
+        if path.is_dir():
+            # Underscore-prefixed dirs are shared code the loader skips; walk them.
+            if path.name.startswith("_") and path.name not in _IGNORED_DIRS:
+                for nested in sorted(path.rglob("*")):
+                    if nested.is_file() and _is_hashable(nested):
+                        out.append((nested.relative_to(root).as_posix(), nested.read_bytes()))
+            continue
+        if _is_hashable(path):
+            out.append((path.name, path.read_bytes()))
+    return out
+
+
+def _is_hashable(path: Path) -> bool:
+    if path.name in _IGNORED_NAMES:
+        return False
+    return not any(part in _IGNORED_DIRS for part in path.parts)
 
 
 def specimen_hash(specimen: Specimen) -> str:
