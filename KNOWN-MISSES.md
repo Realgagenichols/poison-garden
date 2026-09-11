@@ -29,7 +29,28 @@ uvx --from mcp-frisk frisk scan --no-sandbox -- <python> specimens/<id>/server.p
 throwaway HOME during a benchmark run; frisk's seatbelt profile is orthogonal to what is
 being measured here (its *detectors*, not its containment).
 
-**Result: 9 of 12 malicious specimens flagged, 3 missed, 0 false positives on 6 twins.**
+**Per class** — reported this way rather than as one figure, for the same reason R10 forbids a
+composite score in a result document: an aggregate hides exactly the lopsided class that
+matters. A specimen carrying two classes counts toward both.
+
+| Class | Caught | Missed |
+|---|---|---|
+| hidden-content | 4/4 | — |
+| sensitive-params | 2/2 | — |
+| scope-mismatch | 1/1 | — |
+| injection | 3/4 | `injection-meeting-preamble` |
+| hygiene | 1/2 | `hygiene-unpinned-remote-exec` |
+| **impersonation** | **0/1** | `impersonation-builtin-reader` |
+
+**False positives: 0 of 6 twins.** Aggregate: 9 of 12 malicious specimens flagged, 3 missed.
+
+The interesting line is impersonation, not the aggregate: frisk flags none of it. One specimen
+is too small a sample to call that a detection gap rather than a single hard case, which is
+itself a finding — the class needs more attackers before its recall figure means anything.
+
+Two specimens (`hidden-zero-width-transit`, `hidden-markup-comment-inventory`) carry a real
+instruction inside the hidden channel and are therefore labelled both `hidden-content` and
+`injection`. Under-labelling an obvious injection would have deflated that class's recall.
 
 ### The three misses (N2 satisfied)
 
