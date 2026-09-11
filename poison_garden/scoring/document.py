@@ -122,6 +122,10 @@ def build_document(
                 "specimen": r.specimen_id,
                 "verdict": str(r.verdict),
                 "exit_code": r.exit_code,
+                # Scan cost, which a vendor comparing tools has a real use for. Rounded:
+                # sub-millisecond precision is noise and would make two runs of the same
+                # corpus differ in every line for no reason.
+                "duration_s": round(r.duration_s, 2),
                 # A category, never the scanner's output.
                 "error_reason": r.error_reason,
             }

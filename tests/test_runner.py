@@ -226,15 +226,22 @@ def test_benign_errored_is_populated_when_a_twin_breaks(tmp_corpus, tmp_path):
     assert scores.benign_total == 1, "a broken twin must leave the FP denominator"
 
 
-def test_error_and_clean_are_distinguishable(corpus):
-    """P55: two empties are two findings."""
-    results = [
-        SpecimenResult("a", Verdict.CLEAN, 0),
-        SpecimenResult("b", Verdict.ERROR, None, error_reason="specimen-no-catalog"),
-    ]
-    assert results[0].scored is True
-    assert results[1].scored is False
-    assert results[0].verdict != results[1].verdict
+def test_error_and_clean_are_distinguishable():
+    """P55: two empties are two findings.
+
+    The `!=` assertion this used to carry compared two enum literals written three lines
+    above — guaranteed by construction, and an instance of the rule that a test supplying
+    the value under test cannot observe anything about it. What actually matters is that
+    `scored` separates them, since that is the predicate scoring keys on.
+    """
+    clean = SpecimenResult("a", Verdict.CLEAN, 0)
+    errored = SpecimenResult("b", Verdict.ERROR, None, error_reason="specimen-no-catalog")
+
+    assert clean.scored is True
+    assert errored.scored is False
+    # The distinction must survive the round-trip into the published document.
+    assert str(clean.verdict) == "clean"
+    assert str(errored.verdict) == "error"
 
 
 def test_all_errored_run_does_not_report_perfect_recall(tmp_corpus, tmp_path):

@@ -170,7 +170,10 @@ def scan_one(
     """Point the scanner at one specimen and classify the outcome."""
     import time
 
-    reason = preflight(specimen, env)
+    # Forward the caller's timeout. preflight defaulted to 20s regardless of --timeout, so
+    # `--timeout 5` still spent 20s per unstartable specimen and `--timeout 300` gave a
+    # slow-starting one only 20.
+    reason = preflight(specimen, env, timeout=min(timeout, 60.0))
     if reason is not None:
         return SpecimenResult(specimen.id, Verdict.ERROR, error_reason=reason)
 
@@ -203,6 +206,7 @@ def scan_one(
         return SpecimenResult(
             specimen.id,
             Verdict.ERROR,
+            duration_s=time.monotonic() - started,
             error_reason=f"scanner-spawn-failed:{type(exc).__name__}",
         )
 
