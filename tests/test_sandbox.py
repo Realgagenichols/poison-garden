@@ -193,7 +193,14 @@ def test_sink_address_is_handed_to_the_specimen(tmp_path: Path):
 # --- S1 / S2: no specimen may reference anything real ------------------------------------
 
 # Public IPv4 literal, excluding loopback/private ranges which are legitimate here.
-_IP_LITERAL = re.compile(r"\b(?!127\.|10\.|192\.168\.|0\.0\.0\.0)\d{1,3}(?:\.\d{1,3}){3}\b")
+_IP_LITERAL = re.compile(
+    r"\b(?!"
+    r"127\.|10\.|0\.0\.0\.0"
+    r"|192\.168\."
+    r"|169\.254\."                      # link-local
+    r"|172\.(?:1[6-9]|2\d|3[01])\."      # 172.16.0.0/12
+    r")\d{1,3}(?:\.\d{1,3}){3}\b"
+)
 _URL = re.compile(r"https?://([A-Za-z0-9.-]+)")
 _ALLOWED_HOSTS = {"localhost", "127.0.0.1", "example.com", "example.org", "example.net"}
 

@@ -90,6 +90,11 @@ _SCHEMA_KEYWORDS = frozenset(
 # Descriptions whose wording is effectively forced by the parameter they document. Two
 # independent authors writing a `command` parameter will both reach for "the shell command
 # to run"; treating that as copying would make the audit unpassable rather than rigorous.
+#
+# Every entry must EARN its place: `_check_exemptions_are_live()` asserts each phrase
+# actually appears in frisk's fixtures. An exemption for a collision that does not exist is
+# a pre-authorization for future specimens with no record of what motivated it, and it
+# silently widens the audit's blind spot over time (P51/P76).
 _FORCED_PHRASINGS = frozenset(
     {
         "the shell command to run",
@@ -97,6 +102,16 @@ _FORCED_PHRASINGS = frozenset(
         "contents of the process environment variables",
     }
 )
+
+
+def _check_exemptions_are_live(frisk_text: str) -> list[str]:
+    """Return exemptions that no longer correspond to anything in frisk's fixtures."""
+    haystack = " ".join(normalise(frisk_text))
+    return sorted(
+        phrase
+        for phrase in _FORCED_PHRASINGS
+        if " ".join(normalise(phrase)) not in haystack
+    )
 
 
 def gather_specimens(specimens_root: Path) -> list[tuple[str, str]]:
@@ -200,6 +215,17 @@ def main() -> int:
     if not specimens:
         print("no specimens found — nothing to audit (this is a vacuous pass)", file=sys.stderr)
         return 2
+
+    stale = _check_exemptions_are_live(frisk_text)
+    if stale:
+        print(
+            f"\nSTALE EXEMPTION(S): {stale}\n"
+            "These phrases are exempted from the comparison but appear nowhere in frisk's "
+            "fixtures, so they exempt nothing today and pre-authorize future specimens "
+            "for a collision that does not exist. Remove them.",
+            file=sys.stderr,
+        )
+        return 1
 
     frisk_ngrams = ngrams(normalise(frisk_text), args.ngram)
     print(

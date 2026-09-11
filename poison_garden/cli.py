@@ -66,8 +66,10 @@ def main(argv: list[str] | None = None) -> int:
 
             return cmd_hash(args.corpus)
     except CorpusInvalid as exc:
-        # Safe to print: CorpusInvalid is raised by our own code with messages built from
-        # paths and class names, never from specimen or manifest CONTENT.
+        # CorpusInvalid messages are built from paths, key names and class names. One
+        # exception, deliberate: an unknown class VALUE is echoed (bounded to 40 chars) by
+        # manifest.py, because "which word was wrong" is the entire use of that error.
+        # That is the only manifest value that reaches this line.
         print(f"corpus invalid: {exc}", file=sys.stderr)
         return EXIT_CORPUS_INVALID
     except Exception as exc:  # noqa: BLE001 - top-level guard, reported not swallowed

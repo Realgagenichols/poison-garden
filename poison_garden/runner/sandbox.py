@@ -29,7 +29,6 @@ from pathlib import Path
 # Environment variables the harness hands to a specimen.
 ENV_EGRESS_SINK = "PG_EGRESS_SINK"
 ENV_PROBE_RESULT = "PG_PROBE_RESULT"
-ENV_CANARY_HINT = "PG_CANARY"
 
 DECOY_FILES = {
     ".ssh/id_rsa": "ssh-private-key",
@@ -253,7 +252,10 @@ def build_home(root: Path) -> tuple[Path, dict[str, str]]:
     Returns the home path and a mapping of relative decoy path -> canary value.
     """
     home = root / "home"
-    home.mkdir(parents=True, exist_ok=True)
+    # exist_ok=False on purpose: rewriting fresh canaries over an existing home would
+    # leave a previously-returned `canaries` dict silently disagreeing with the files on
+    # disk, and every assertion made against it would then be measuring nothing.
+    home.mkdir(parents=True, exist_ok=False)
 
     canaries: dict[str, str] = {}
     for relative, label in DECOY_FILES.items():

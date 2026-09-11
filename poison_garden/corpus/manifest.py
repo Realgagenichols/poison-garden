@@ -170,8 +170,13 @@ def _class_list(path: Path, data: dict[str, Any], key: str) -> tuple[Class, ...]
         try:
             out.append(Class(item))
         except ValueError as exc:
+            # The offending value IS echoed, because "which word was wrong" is the
+            # whole use of this error. It is bounded so a pathological manifest cannot
+            # dump content through it, and it is the ONLY manifest value that reaches an
+            # error message — see the note on the top-level handler in cli.py.
+            shown = item if len(item) <= 40 else item[:40] + "…"
             raise ManifestError(
-                f"{path}: {key}[{index}] is not a known class: '{item}'. "
+                f"{path}: {key}[{index}] is not a known class: {shown!r}. "
                 f"Valid classes are {valid}."
             ) from exc
 
