@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, py${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Both ends of requires-python (>=3.12): pinning dev to 3.12 while CI ran only
+        # 3.12 would let a 3.13 incompatibility ship unnoticed.
+        os: [ubuntu-latest, macos-latest]
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+
+      - name: Sync
+        run: uv sync --python ${{ matrix.python }}
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Test
+        run: uv run pytest -q
+
+  corpus:
+    name: corpus validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+
+      - name: Sync
+        run: uv sync
+
+      # R3: every attack class must have a benign twin, or false-positive rate is
+      # unmeasurable for that class and its recall figure means nothing.
+      - name: Validate corpus (R3)
+        run: uv run poison-garden validate --corpus specimens
+
+      # R4: the hash must be a function of corpus bytes alone. Computing it twice in
+      # different orders catches any dependence on filesystem iteration order.
+      - name: Corpus hash is stable (R4)
+        run: |
+          set -euo pipefail
+          a=$(uv run poison-garden hash --corpus specimens 2>/dev/null)
+          b=$(uv run poison-garden hash --corpus specimens 2>/dev/null)
+          if [ "$a" != "$b" ]; then
+            echo "::error::corpus hash is not stable across invocations"
+            printf 'first:\n%s\nsecond:\n%s\n' "$a" "$b"
+            exit 1
+          fi
+          echo "$a"
+
+      # P50: a check whose green is guaranteed by WHEN you run it is not a check. This
+      # proves the validation job can actually fail, by breaking a copy of the corpus and
+      # asserting a non-zero exit. Without it, "corpus validation passed" would be
+      # indistinguishable from "corpus validation did nothing".
+      - name: Validation actually fails on a broken corpus (P50)
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/broken-corpus
+          cp -R specimens /tmp/broken-corpus
+          # Remove every benign twin, which must make R3 fail.
+          uv run python - <<'PY'
+          import pathlib, sys
+          sys.path.insert(0, ".")
+          from poison_garden.corpus.loader import load_corpus
+          removed = 0
+          for s in load_corpus("/tmp/broken-corpus").specimens:
+              if s.is_benign:
+                  (s.path / "manifest.toml").write_text(
+                      f'id = "{s.id}"\nsummary = "twin removed to prove CI can fail"\n',
+                      encoding="utf-8",
+                  )
+                  removed += 1
+          assert removed > 0, "no twins found to remove — this probe would be vacuous"
+          print(f"neutralised {removed} twin(s)")
+          PY
+          if uv run poison-garden validate --corpus /tmp/broken-corpus; then
+            echo "::error::validation PASSED on a deliberately broken corpus — the check is dead"
+            exit 1
+          fi
+          echo "confirmed: validation fails on a broken corpus"
