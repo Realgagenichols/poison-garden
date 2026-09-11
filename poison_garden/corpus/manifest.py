@@ -9,7 +9,7 @@ into a benign one and corrupt every score computed from it.
 from __future__ import annotations
 
 import tomllib
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 from poison_garden.corpus.models import Class, Manifest, ManifestError
@@ -56,7 +56,46 @@ def parse_manifest(path: Path) -> Manifest:
     )
 
     _check_twin_coherence(path, manifest)
+    _check_entrypoint_containment(path, manifest)
     return manifest
+
+
+def _check_entrypoint_containment(path: Path, manifest: Manifest) -> None:
+    """`entrypoint` must name a file INSIDE the specimen directory.
+
+    `Path("specimens/x") / "/bin/echo"` is `/bin/echo` — pathlib discards the left operand
+    when the right is absolute. So an absolute entrypoint, or one containing `..`, makes a
+    specimen execute a file outside its own directory. That file is then also outside
+    `_specimen_files()` and therefore outside the content hash, so the corpus would run
+    code its own hash does not cover.
+
+    This is the one manifest field where "treat it as external input" (P13) was not being
+    enforced, and it matters most exactly where the corpus is meant to grow: merged
+    specimen pull requests.
+    """
+    entrypoint = PurePosixPath(manifest.entrypoint)
+
+    if entrypoint.is_absolute() or PureWindowsPath(manifest.entrypoint).is_absolute():
+        raise ManifestError(
+            f"{path}: entrypoint must be relative to the specimen directory, got an "
+            f"absolute path. An absolute entrypoint runs a file outside the specimen, "
+            "which is also outside the corpus hash."
+        )
+
+    if ".." in entrypoint.parts:
+        raise ManifestError(
+            f"{path}: entrypoint must not contain '..'. It would resolve outside the "
+            "specimen directory, and therefore outside the corpus hash."
+        )
+
+    if not manifest.entrypoint.strip():
+        raise ManifestError(f"{path}: entrypoint must not be empty")
+
+    if "\\" in manifest.entrypoint:
+        raise ManifestError(
+            f"{path}: entrypoint must use forward slashes so it means the same thing on "
+            "every platform"
+        )
 
 
 def _check_twin_coherence(path: Path, manifest: Manifest) -> None:

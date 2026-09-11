@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -99,3 +100,26 @@ jobs:
             exit 1
           fi
           echo "confirmed: validation fails on a broken corpus"
+
+  # N5 mandates that corpus validation run in CI "including N2". N2 binds at RELEASE
+  # rather than at merge (M1 ships declaration classes, which is frisk's strongest
+  # ground), but "binds at release" means nothing unless something checks at release.
+  # Without this job KNOWN-MISSES.md could drop to zero rows and nothing would notice,
+  # which turns the project's central honesty commitment into a promise in prose.
+  n2-release-gate:
+    name: N2 register (release tags only)
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+
+      - name: Sync
+        run: uv sync
+
+      - name: KNOWN-MISSES holds at least 3 live specimens
+        run: uv run python scripts/check_known_misses.py --min 3

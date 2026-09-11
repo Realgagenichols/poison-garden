@@ -130,10 +130,32 @@ def test_specimen_cannot_see_the_real_home_path(tmp_path: Path):
 def test_env_is_scrubbed_not_inherited(tmp_path: Path):
     """A specimen must not see the real user's tokens even by accident."""
     with sandbox(tmp_path) as (box, _sink):
-        env = box.env({"AWS_SECRET_ACCESS_KEY": "REAL-SECRET", "PATH": "/usr/bin"})
+        env = box.env({"AWS_SECRET_ACCESS_KEY": "REAL-SECRET", "PATH": "/opt/evil/bin"})
         assert "AWS_SECRET_ACCESS_KEY" not in env
         assert env["HOME"] == str(box.home)
-        assert env["PATH"] == "/usr/bin"
+        assert "/opt/evil/bin" not in env["PATH"], "PATH must not be inherited at all"
+
+
+def test_no_environment_variable_discloses_the_real_home(tmp_path: Path):
+    """REGRESSION: the allowlist used to pass PATH straight through.
+
+    The real PATH contains the user's home verbatim (`/Users/<name>/.venvs/...`), so the
+    very allowlist meant to withhold the real home was handing it over as a string. An
+    absent guarantee is worse than a weak one when the README makes a promise about it.
+    """
+    with sandbox(tmp_path) as (box, _sink):
+        real_home = str(Path.home())
+        leaks = {k: v for k, v in box.env().items() if real_home in str(v)}
+        assert not leaks, f"environment discloses the real home: {leaks}"
+
+
+def test_tmpdir_points_inside_the_throwaway_root(tmp_path: Path):
+    """An inherited TMPDIR is a writable real-user directory outside the decoy home."""
+    with sandbox(tmp_path) as (box, _sink):
+        tmpdir = Path(box.env()["TMPDIR"]).resolve()
+        assert tmpdir.is_relative_to(tmp_path.resolve()), (
+            f"TMPDIR {tmpdir} is outside the throwaway root {tmp_path}"
+        )
 
 
 # --- S1: egress reaches loopback and nothing else ----------------------------------------

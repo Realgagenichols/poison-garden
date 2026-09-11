@@ -61,6 +61,19 @@ def load_corpus(root: str | Path) -> Corpus:
         seen_ids[manifest.id] = entry
 
         specimen = Specimen(path=entry, manifest=manifest)
+
+        # Second check, after resolution. parse_manifest rejects absolute and `..`
+        # entrypoints by inspecting the string; this catches anything that still escapes
+        # once symlinks and normalisation are applied. A specimen must never execute a
+        # file outside its own directory — that file would also sit outside the corpus
+        # hash, so the corpus would run code its own hash does not cover.
+        resolved = specimen.entrypoint_path.resolve()
+        if not resolved.is_relative_to(entry.resolve()):
+            raise CorpusError(
+                f"{entry}: entrypoint '{manifest.entrypoint}' resolves to {resolved}, "
+                "outside the specimen directory"
+            )
+
         if not specimen.entrypoint_path.is_file():
             raise CorpusError(
                 f"{entry}: entrypoint '{manifest.entrypoint}' not found. A specimen is a "

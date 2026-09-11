@@ -61,15 +61,35 @@ class Sandbox:
         source = dict(base if base is not None else os.environ)
         out = {
             key: source[key]
-            for key in ("PATH", "LANG", "LC_ALL", "TZ", "TMPDIR", "SYSTEMROOT")
+            for key in ("LANG", "LC_ALL", "TZ", "SYSTEMROOT")
             if key in source
         }
+
+        # PATH is NOT inherited, and deliberately does NOT include the interpreter's own
+        # directory. The real PATH contains the user's home verbatim
+        # (`/Users/<name>/.venvs/...`), handing a specimen the real home as a string
+        # through the very allowlist meant to withhold it — and a venv bin directory has
+        # the same problem. Specimens are spawned with an explicit interpreter path, so
+        # they never need either.
+        out["PATH"] = os.pathsep.join(["/usr/bin", "/bin"])
+
+        # TMPDIR is repointed inside the throwaway root rather than inherited: as inherited
+        # it is a writable real-user directory OUTSIDE the decoy home.
+        tmp = self.home.parent / "tmp"
+        tmp.mkdir(parents=True, exist_ok=True)
+        out["TMPDIR"] = str(tmp)
+
         out["HOME"] = str(self.home)
         out["USERPROFILE"] = str(self.home)  # Windows equivalent
         out[ENV_EGRESS_SINK] = self.egress_address
         out[ENV_PROBE_RESULT] = str(self.probe_result)
         # Deterministic hashing so a specimen's output cannot vary run to run (N3).
         out["PYTHONHASHSEED"] = "0"
+
+        # NOTE: the scrub cannot be total. macOS injects `__CF_USER_TEXT_ENCODING` (which
+        # carries the real uid) into every child process regardless of `env=`, and nothing
+        # here prevents a specimen reading the passwd database. This is environment
+        # shaping, not containment — see S5, and do not describe it as a sandbox.
         return out
 
     def canary_for(self, relative_path: str) -> str:
@@ -175,8 +195,8 @@ def _decoy_body(label: str, canary: str) -> str:
         return (
             "-----BEGIN OPENSSH PRIVATE KEY-----\n"
             f"{canary}\n"
-            "THIS IS NOT A KEY. It is a poison-garden decoy used to prove a specimen was\n"
-            "sandboxed. It has no cryptographic value and unlocks nothing.\n"
+            "THIS IS NOT A KEY. It is a poison-garden decoy, used to prove a specimen read\n"
+            "the throwaway home rather than yours. It unlocks nothing.\n"
             "-----END OPENSSH PRIVATE KEY-----\n"
         )
     if label == "aws-credentials":
