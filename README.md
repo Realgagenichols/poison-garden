@@ -34,10 +34,10 @@ uv tool install poison-garden
 poison-garden run --scanner "your-scanner {target}" --out result.json
 ```
 
-The runner boots each specimen in a throwaway `$HOME` seeded with decoy credentials, invokes
-your command once per specimen, and derives a verdict from the exit code — **no integration
-work required to get a first number.** Scanners that emit SARIF can opt into per-class
-attribution instead.
+The runner pre-flights each specimen to confirm it actually serves a catalog, then invokes
+your command once per specimen and derives a verdict from the exit code — **no integration
+work required to get a first number.** Per-class attribution via SARIF is planned, and
+optional when it lands: a coarse number everyone can produce beats a precise one nobody does.
 
 You get one result document containing per-class recall *and* the false-positive rate over
 the benign twins. Never one without the other, and never a single composite score:
