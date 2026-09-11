@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+
+# Tooling
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# Env / OS
+.env
+.DS_Store
+
+# Scratch run output. NOTE: this ignores result documents produced while developing
+# poison-garden itself. SUBMITTED results live in results/ and ARE committed — that is
+# the leaderboard, and an ignored one records nothing.
+/tmp-results/
+
+# AI workflow artifacts (local only, not part of the published repo)
+CLAUDE.md
+SPEC.md
+tasks/
+changes/
+docs/
