@@ -27,7 +27,7 @@ from typing import Any
 from poison_garden.corpus.hash import corpus_hash, refuse_mismatch
 from poison_garden.corpus.models import Corpus
 from poison_garden.runner.execute import ExitCodeMapping, SpecimenResult
-from poison_garden.scoring.score import Scores, score_run
+from poison_garden.scoring.score import Scores, ScoringRefused, score_run
 
 SCHEMA_VERSION = "poison-garden/result@1"
 
@@ -88,6 +88,20 @@ def build_document(
 ) -> ResultDocument:
     """Assemble the document. Scoring's refusal rules apply before anything is written."""
     scores = scores if scores is not None else score_run(corpus, results)
+
+    # R9 names the EMITTER: "SHALL refuse to emit a document containing one without the
+    # other". Keeping that check only inside `score_run` left a bypass — passing a
+    # pre-computed `Scores` skipped it entirely, and a run where every twin errored
+    # produced a schema-valid document showing 100% recall on all six classes with
+    # `"rate": null`. Measured, not hypothesised. No shipped caller did that, but the
+    # obvious future optimisation (score once, then build) is exactly that call.
+    if scores.false_positive_rate is None:
+        raise ScoringRefused(
+            "refusing to emit a document with no false-positive rate. Every benign twin "
+            "errored or was absent, so the per-class recall figures below have no control "
+            "and would read as a clean sweep. Recall without a false-positive rate is not "
+            "a measurement (R9)."
+        )
 
     payload: dict[str, Any] = {
         "schema": SCHEMA_VERSION,

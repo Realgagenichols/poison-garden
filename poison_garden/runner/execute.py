@@ -57,6 +57,22 @@ class ExitCodeMapping:
 
     flag_on: str = "nonzero"
 
+    def __post_init__(self) -> None:
+        """Validate at the boundary, not on the first specimen (P6).
+
+        `int(self.flag_on)` used to run inside `verdict_for`, so `--flag-on banana` spawned
+        every specimen, scanned the first one, and then died with a bare ValueError after
+        the work was already done.
+        """
+        if self.flag_on == "nonzero":
+            return
+        try:
+            int(self.flag_on)
+        except ValueError as exc:
+            raise ValueError(
+                f"--flag-on must be 'nonzero' or an integer exit code, got {self.flag_on!r}"
+            ) from exc
+
     def verdict_for(self, exit_code: int) -> Verdict:
         # A negative returncode means killed by a signal: the scanner did not reach a
         # conclusion, so neither do we.

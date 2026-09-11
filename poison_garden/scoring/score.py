@@ -63,9 +63,7 @@ class Scores:
         return len(self.false_positives) / self.benign_total
 
 
-def score_run(
-    corpus: Corpus, results: list[SpecimenResult], *, require_twins: bool = True
-) -> Scores:
+def score_run(corpus: Corpus, results: list[SpecimenResult]) -> Scores:
     """Turn per-specimen verdicts into per-class recall and a false-positive rate."""
     by_id = {r.specimen_id: r for r in results}
 
@@ -79,7 +77,7 @@ def score_run(
     benign = corpus.benign
     scorable_benign = [s for s in benign if by_id[s.id].scored]
 
-    if require_twins and not scorable_benign:
+    if not scorable_benign:
         raise ScoringRefused(
             "refusing to emit a result with no scorable benign twins. Recall without a "
             "false-positive rate is a flattering half-measurement: any scanner reaches "

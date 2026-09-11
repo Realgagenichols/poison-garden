@@ -34,7 +34,12 @@ from poison_garden.scoring.document import (
     compare,
     composite_fields_in,
 )
-from poison_garden.scoring.score import ScoringRefused, score_run
+from poison_garden.scoring.score import (
+    ClassScore,
+    Scores,
+    ScoringRefused,
+    score_run,
+)
 
 
 @pytest.fixture(scope="module")
@@ -272,19 +277,93 @@ def test_scoring_refuses_recall_without_false_positives(tmp_corpus, tmp_path):
 
 
 def test_dual_class_specimen_counts_toward_both_classes(corpus):
-    """Under-counting here would deflate one class's recall silently."""
+    """A missed dual-class specimen must appear under EVERY class it carries.
+
+    The previous version set every malicious specimen to FLAGGED, so `missed` was empty
+    for every class and the assertion was `id not in ()` — true by construction, whatever
+    `score_run` did. A mutation attributing a dual-class specimen to only its
+    alphabetically-first class passed the whole suite.
+
+    Flipping the dual-class specimen to CLEAN is what makes this discriminating: a scanner
+    that misses it would otherwise publish a document naming it under `injection` while
+    silently omitting it from `hidden-content`, where it would read as a clean catch.
+    """
     dual = [s for s in corpus.malicious if len(s.classes) > 1]
-    assert dual, "corpus has no dual-class specimen to check"
+    assert dual, "corpus has no dual-class specimen — this test cannot discriminate (P48)"
+    target = dual[0]
+    assert len(target.classes) >= 2
 
     results = [
-        SpecimenResult(s.id, Verdict.FLAGGED if not s.is_benign else Verdict.CLEAN, 1)
+        SpecimenResult(
+            s.id,
+            Verdict.CLEAN if (s.is_benign or s.id == target.id) else Verdict.FLAGGED,
+            1,
+        )
         for s in corpus.specimens
     ]
     scores = score_run(corpus, results)
-    for specimen in dual:
-        for klass in specimen.classes:
-            entry = next(c for c in scores.per_class if c.klass is klass)
-            assert specimen.id not in entry.missed
+
+    for klass in target.classes:
+        entry = next(c for c in scores.per_class if c.klass is klass)
+        # Set equality, not membership: `in` cannot see N-1 of the other entries change
+        # (P105), and the defect being guarded is omission from ONE class.
+        assert set(entry.missed) == {target.id}, (
+            f"{klass.value}: expected {target.id} missed, got {entry.missed}"
+        )
+        attackers = [s for s in corpus.malicious if klass in s.classes]
+        assert entry.total == len(attackers), (
+            f"{klass.value}: dual-class specimen missing from the denominator"
+        )
+
+
+def test_document_refuses_to_emit_without_a_false_positive_rate(corpus):
+    """C5 regression: the refusal belongs at the EMITTER, which is what R9 names.
+
+    Passing a pre-computed `Scores` used to skip the check in `score_run` entirely,
+    producing a schema-valid document with 100% recall on all six classes and
+    `"rate": null` — the flattering half-truth R9 exists to forbid.
+    """
+    results = [
+        SpecimenResult(
+            s.id,
+            Verdict.ERROR if s.is_benign else Verdict.FLAGGED,
+            None if s.is_benign else 1,
+        )
+        for s in corpus.specimens
+    ]
+
+    # The bypass is passing a PRE-COMPUTED Scores, which skips score_run's own refusal.
+    # Calling build_document without `scores=` would be caught by score_run instead, so
+    # this test would pass with the emitter guard deleted — which is exactly what the
+    # first version of it did (verified: guard removed, 358 still green).
+    hand_built = Scores(
+        per_class=tuple(
+            ClassScore(
+                klass=k,
+                caught=len([s for s in corpus.malicious if k in s.classes]),
+                total=len([s for s in corpus.malicious if k in s.classes]),
+                missed=(),
+                errored=(),
+            )
+            for k in sorted(corpus.classes_present, key=lambda c: c.value)
+        ),
+        false_positives=(),
+        benign_total=0,  # every twin errored -> no control at all
+        benign_errored=tuple(sorted(s.id for s in corpus.benign)),
+        errored=tuple(sorted(s.id for s in corpus.benign)),
+    )
+    assert hand_built.false_positive_rate is None, "precondition: no FP rate to report"
+
+    with pytest.raises(ScoringRefused, match="false-positive rate"):
+        build_document(corpus, results, "cheat", ExitCodeMapping(), scores=hand_built)
+
+
+def test_flag_on_is_validated_at_construction(corpus):
+    """W1: `int(flag_on)` used to run mid-scan, after every specimen had been spawned."""
+    with pytest.raises(ValueError, match="--flag-on"):
+        ExitCodeMapping(flag_on="banana")
+    ExitCodeMapping(flag_on="nonzero")
+    ExitCodeMapping(flag_on="2")
 
 
 def test_flipping_one_verdict_moves_exactly_one_class(corpus):
