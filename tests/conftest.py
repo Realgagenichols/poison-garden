@@ -37,9 +37,15 @@ def tmp_corpus(tmp_path: Path) -> Callable[..., Path]:
     Callers may pass `manifest_text` to write raw TOML instead (malformed-input tests).
     """
 
-    def _build(specimens: Iterable[dict], root_name: str = "specimens") -> Path:
+    def _build(
+        specimens: Iterable[dict],
+        root_name: str = "specimens",
+        version: str | None = None,
+    ) -> Path:
         root = tmp_path / root_name
         root.mkdir(parents=True, exist_ok=True)
+        if version is not None:
+            (root / "CORPUS_VERSION").write_text(version + "\n", encoding="utf-8")
 
         for spec in specimens:
             spec_id = spec["id"]
@@ -73,6 +79,8 @@ def _manifest_toml(spec: dict) -> str:
         f"declaration = {_toml_list(spec.get('declaration', []))}",
         f"behavior = {_toml_list(spec.get('behavior', []))}",
     ]
+    if spec.get("twin_for"):
+        lines.append(f"twin_for = {_toml_list(spec['twin_for'])}")
     if "entrypoint" in spec:
         lines.append(f'entrypoint = "{spec["entrypoint"]}"')
     return "\n".join(lines) + "\n"

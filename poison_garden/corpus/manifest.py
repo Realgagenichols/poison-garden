@@ -17,7 +17,7 @@ from poison_garden.corpus.models import Class, Manifest, ManifestError
 MANIFEST_NAME = "manifest.toml"
 
 REQUIRED_KEYS = frozenset({"id", "summary"})
-OPTIONAL_KEYS = frozenset({"declaration", "behavior", "entrypoint", "notes"})
+OPTIONAL_KEYS = frozenset({"declaration", "behavior", "twin_for", "entrypoint", "notes"})
 KNOWN_KEYS = REQUIRED_KEYS | OPTIONAL_KEYS
 
 
@@ -45,14 +45,35 @@ def parse_manifest(path: Path) -> Manifest:
     _reject_unknown_keys(path, data)
     _require_keys(path, data)
 
-    return Manifest(
+    manifest = Manifest(
         id=_str_field(path, data, "id"),
         summary=_str_field(path, data, "summary"),
         declaration=_class_list(path, data, "declaration"),
         behavior=_class_list(path, data, "behavior"),
+        twin_for=_class_list(path, data, "twin_for"),
         entrypoint=_str_field(path, data, "entrypoint", default="server.py"),
         notes=_str_field(path, data, "notes", default=""),
     )
+
+    _check_twin_coherence(path, manifest)
+    return manifest
+
+
+def _check_twin_coherence(path: Path, manifest: Manifest) -> None:
+    """A twin is a false-positive control, so it must itself be benign.
+
+    Without this, a specimen could claim to be the control for the very class it exhibits,
+    and the R3 twin-coverage check would pass while measuring nothing (P51 — exempting a
+    surface makes every probe on it vacuous).
+    """
+    if manifest.twin_for and not manifest.is_benign:
+        exhibited = sorted(c.value for c in manifest.classes)
+        claimed = sorted(c.value for c in manifest.twin_for)
+        raise ManifestError(
+            f"{path}: a specimen that exhibits {exhibited} cannot also be the benign twin "
+            f"for {claimed}. A twin is a false-positive control and must itself be benign "
+            "(declaration and behavior both empty)."
+        )
 
 
 def _reject_unknown_keys(path: Path, data: dict[str, Any]) -> None:

@@ -75,12 +75,18 @@ class Manifest:
     summary: str
     declaration: tuple[Class, ...] = ()
     behavior: tuple[Class, ...] = ()
+    twin_for: tuple[Class, ...] = ()
     entrypoint: str = "server.py"
     notes: str = ""
 
     @property
     def is_benign(self) -> bool:
-        """True when the specimen exhibits no attack class at all."""
+        """True when the specimen exhibits no attack class at all.
+
+        `twin_for` deliberately does NOT count: a twin is benign *by construction*. It
+        names the class it is a false-positive control for, which is a different question
+        from what it exhibits.
+        """
         return not self.declaration and not self.behavior
 
     @property
@@ -112,6 +118,10 @@ class Specimen:
     def classes(self) -> frozenset[Class]:
         return self.manifest.classes
 
+    @property
+    def twin_for(self) -> frozenset[Class]:
+        return frozenset(self.manifest.twin_for)
+
 
 @dataclass(frozen=True)
 class Corpus:
@@ -139,6 +149,17 @@ class Corpus:
         for specimen in self.malicious:
             out |= specimen.classes
         return frozenset(out)
+
+    @property
+    def classes_with_twin(self) -> frozenset[Class]:
+        """Every class that at least one benign specimen acts as a control for."""
+        out: set[Class] = set()
+        for specimen in self.benign:
+            out |= specimen.twin_for
+        return frozenset(out)
+
+    def twins_for(self, klass: Class) -> tuple[Specimen, ...]:
+        return tuple(s for s in self.benign if klass in s.twin_for)
 
     def by_id(self, specimen_id: str) -> Specimen | None:
         for specimen in self.specimens:
