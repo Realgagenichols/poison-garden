@@ -1,0 +1,187 @@
+{
+  "corpus": {
+    "hash": "sha256:2ec368416970d6cae663ac8820200c92d9f3b0ab03ec3e49448f451f2bf64c49",
+    "specimen_count": 18,
+    "version": "0.1.0"
+  },
+  "errors": [],
+  "false_positives": {
+    "benign_total": 6,
+    "errored": [],
+    "rate": 0.0,
+    "specimens": []
+  },
+  "generated_utc": "2026-09-11T17:41:11Z",
+  "notes": "No composite score is reported, by design (R10). An aggregate hides the lopsided class, which is usually the interesting one, and invites the rank-ordering poison-garden refuses to perform. Recall and false positives are reported together because either alone misrepresents the run.",
+  "per_class": [
+    {
+      "caught": 4,
+      "class": "hidden-content",
+      "errored": [],
+      "missed": [],
+      "recall": 1.0,
+      "total": 4
+    },
+    {
+      "caught": 1,
+      "class": "hygiene",
+      "errored": [],
+      "missed": [
+        "hygiene-unpinned-remote-exec"
+      ],
+      "recall": 0.5,
+      "total": 2
+    },
+    {
+      "caught": 0,
+      "class": "impersonation",
+      "errored": [],
+      "missed": [
+        "impersonation-builtin-reader"
+      ],
+      "recall": 0.0,
+      "total": 1
+    },
+    {
+      "caught": 3,
+      "class": "injection",
+      "errored": [],
+      "missed": [
+        "injection-meeting-preamble"
+      ],
+      "recall": 0.75,
+      "total": 4
+    },
+    {
+      "caught": 1,
+      "class": "scope-mismatch",
+      "errored": [],
+      "missed": [],
+      "recall": 1.0,
+      "total": 1
+    },
+    {
+      "caught": 2,
+      "class": "sensitive-params",
+      "errored": [],
+      "missed": [],
+      "recall": 1.0,
+      "total": 2
+    }
+  ],
+  "scanner": {
+    "exit_code_mapping": "exit != 0 -> flagged; exit == 0 -> clean; exit < 0 (signal) -> error",
+    "name": "mcp-frisk 0.2.0"
+  },
+  "schema": "poison-garden/result@1",
+  "verdicts": [
+    {
+      "error_reason": null,
+      "exit_code": 2,
+      "specimen": "hidden-ansi-escape-ci",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 2,
+      "specimen": "hidden-bidi-override-export",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "hidden-content-twin-localization",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 1,
+      "specimen": "hidden-markup-comment-inventory",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 2,
+      "specimen": "hidden-zero-width-transit",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 1,
+      "specimen": "hygiene-anonymous-server",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "hygiene-twin-pinned-installer",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "hygiene-unpinned-remote-exec",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "impersonation-builtin-reader",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "impersonation-twin-wiki-search",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 2,
+      "specimen": "injection-invoice-remit-override",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "injection-meeting-preamble",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "injection-twin-invoice-import",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 1,
+      "specimen": "scope-mismatch-timezone-helper",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "scope-mismatch-twin-runbook",
+      "verdict": "clean"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 1,
+      "specimen": "sensitive-params-diagnostics-dump",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 1,
+      "specimen": "sensitive-params-ticket-transcript",
+      "verdict": "flagged"
+    },
+    {
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "sensitive-params-twin-ticket-router",
+      "verdict": "clean"
+    }
+  ]
+}

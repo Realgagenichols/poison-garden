@@ -1,0 +1,129 @@
+"""The result document — R4, R6, R9, R10, S3.
+
+This is the artifact a vendor publishes, so it has to carry everything a reader needs to
+check it and nothing they must take on trust:
+
+- the corpus **version and hash**, so two documents are only comparable when they describe
+  the same corpus (R4)
+- the **exit-code mapping** actually applied, so a reader can see how a number became a
+  verdict (R6)
+- every **per-specimen verdict**, so the stated figures are recomputable from the document
+  itself rather than believed (P26)
+- per-class recall **and** a false-positive rate, together or not at all (R9)
+- **no composite score**, ever (R10)
+
+What it must never carry (S3): a decoy canary, a scanner token, an environment value, or
+raw specimen output. Specimen ids and class names only.
+"""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from poison_garden.corpus.hash import corpus_hash, refuse_mismatch
+from poison_garden.corpus.models import Corpus
+from poison_garden.runner.execute import ExitCodeMapping, SpecimenResult
+from poison_garden.scoring.score import Scores, score_run
+
+SCHEMA_VERSION = "poison-garden/result@1"
+
+# Fields a reader might expect but which are deliberately absent. Asserted by tests, so
+# adding a composite score requires deleting this list on purpose rather than by accident.
+FORBIDDEN_FIELDS = frozenset({"score", "overall", "total_score", "grade", "rating", "rank"})
+
+
+@dataclass(frozen=True)
+class ResultDocument:
+    payload: dict[str, Any]
+
+    def to_json(self, indent: int = 2) -> str:
+        return json.dumps(self.payload, indent=indent, sort_keys=True) + "\n"
+
+    def write(self, path: str | Path) -> Path:
+        out = Path(path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(self.to_json(), encoding="utf-8")
+        return out
+
+    @property
+    def corpus_hash(self) -> str:
+        return self.payload["corpus"]["hash"]
+
+
+def build_document(
+    corpus: Corpus,
+    results: list[SpecimenResult],
+    scanner_name: str,
+    mapping: ExitCodeMapping,
+    scores: Scores | None = None,
+) -> ResultDocument:
+    """Assemble the document. Scoring's refusal rules apply before anything is written."""
+    scores = scores if scores is not None else score_run(corpus, results)
+
+    payload: dict[str, Any] = {
+        "schema": SCHEMA_VERSION,
+        "generated_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "corpus": {
+            "version": corpus.version,
+            "hash": corpus_hash(corpus),
+            "specimen_count": len(corpus),
+        },
+        "scanner": {
+            # The scanner's IDENTITY, not the command line: a template can contain an API
+            # token, and this document is meant to be published (S3).
+            "name": scanner_name,
+            "exit_code_mapping": mapping.describe(),
+        },
+        "verdicts": [
+            {
+                "specimen": r.specimen_id,
+                "verdict": str(r.verdict),
+                "exit_code": r.exit_code,
+                # A category, never the scanner's output.
+                "error_reason": r.error_reason,
+            }
+            for r in sorted(results, key=lambda r: r.specimen_id)
+        ],
+        "per_class": [
+            {
+                "class": str(c.klass),
+                "caught": c.caught,
+                "total": c.total,
+                "recall": c.recall,
+                "missed": list(c.missed),
+                "errored": list(c.errored),
+            }
+            for c in scores.per_class
+        ],
+        "false_positives": {
+            "specimens": list(scores.false_positives),
+            "benign_total": scores.benign_total,
+            "rate": scores.false_positive_rate,
+            "errored": list(scores.benign_errored),
+        },
+        "errors": list(scores.errored),
+        "notes": (
+            "No composite score is reported, by design (R10). An aggregate hides the "
+            "lopsided class, which is usually the interesting one, and invites the "
+            "rank-ordering poison-garden refuses to perform. Recall and false positives "
+            "are reported together because either alone misrepresents the run."
+        ),
+    }
+    return ResultDocument(payload=payload)
+
+
+def compare(a: ResultDocument, b: ResultDocument, *, label_a: str = "a", label_b: str = "b") -> None:
+    """Refuse to compare documents describing different corpora (R4).
+
+    Completes R4's scenario: M1 built `refuse_mismatch`, this is the consumer it was
+    built for.
+    """
+    refuse_mismatch(a.corpus_hash, b.corpus_hash, label_a=label_a, label_b=label_b)
+
+
+def load_document(path: str | Path) -> ResultDocument:
+    return ResultDocument(payload=json.loads(Path(path).read_text(encoding="utf-8")))

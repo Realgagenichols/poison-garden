@@ -49,6 +49,27 @@ def build_parser() -> argparse.ArgumentParser:
     p_hash = sub.add_parser("hash", help="print the corpus version and content hash")
     p_hash.add_argument("--corpus", default="specimens", help="corpus root (default: specimens)")
 
+    p_run = sub.add_parser("run", help="run YOUR scanner over the corpus and score it")
+    p_run.add_argument("--corpus", default="specimens", help="corpus root (default: specimens)")
+    p_run.add_argument(
+        "--scanner",
+        required=True,
+        help="scanner command template containing {target}, e.g. \"mcp-scan {target}\"",
+    )
+    p_run.add_argument("--out", required=True, help="path to write the result document")
+    p_run.add_argument(
+        "--scanner-name",
+        default=None,
+        help="identity recorded in the document (default: the template's program name). "
+             "The full template is never recorded — it may contain a token.",
+    )
+    p_run.add_argument(
+        "--flag-on",
+        default="nonzero",
+        help="'nonzero' (default) or a minimum exit code that counts as flagged",
+    )
+    p_run.add_argument("--timeout", type=float, default=120.0, help="per-specimen seconds")
+
     return parser
 
 
@@ -65,6 +86,17 @@ def main(argv: list[str] | None = None) -> int:
             from poison_garden.commands import cmd_hash
 
             return cmd_hash(args.corpus)
+        if args.command == "run":
+            from poison_garden.commands import cmd_run
+
+            return cmd_run(
+                corpus_root=args.corpus,
+                scanner=args.scanner,
+                out=args.out,
+                scanner_name=args.scanner_name,
+                flag_on=args.flag_on,
+                timeout=args.timeout,
+            )
     except CorpusInvalid as exc:
         # CorpusInvalid messages are built from paths, key names and class names. One
         # exception, deliberate: an unknown class VALUE is echoed (bounded to 40 chars) by

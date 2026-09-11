@@ -40,7 +40,30 @@ work required to get a first number.** Scanners that emit SARIF can opt into per
 attribution instead.
 
 You get one result document containing per-class recall *and* the false-positive rate over
-the benign twins. Never one without the other, and never a single composite score.
+the benign twins. Never one without the other, and never a single composite score:
+
+```
+  hidden-content     4/4  100%
+  hygiene            1/2   50%
+  impersonation      0/1    0%
+  injection          3/4   75%
+  scope-mismatch     1/1  100%
+  sensitive-params   2/2  100%
+  false positives    0/6    0%
+```
+
+A specimen the scanner could not be asked about — one that fails to start, or whose scan
+times out — is recorded as `error` and leaves **both** the numerator and the denominator. It
+is never counted as a miss, because a broken specimen is a defect in this corpus, not a
+finding about your tool.
+
+The document records the corpus version and hash it describes, and the exact exit-code
+mapping applied, so every figure in it is recomputable from its own per-specimen verdicts.
+It records your scanner's *name*, never your command line — a template can contain a token.
+
+**One limitation worth stating plainly:** during a scan, your scanner spawns the specimen,
+so poison-garden does not control the specimen's environment — you do. Our throwaway home
+covers only our own pre-flight handshake. See [Safety](#safety).
 
 ## Publishing a result
 

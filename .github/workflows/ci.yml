@@ -74,6 +74,29 @@ jobs:
       # proves the validation job can actually fail, by breaking a copy of the corpus and
       # asserting a non-zero exit. Without it, "corpus validation passed" would be
       # indistinguishable from "corpus validation did nothing".
+      # R5-R10: the runner must survive a real end-to-end pass, or the one thing a vendor
+      # actually executes is the one thing CI never touches.
+      - name: Runner end-to-end (stub scanner)
+        run: |
+          set -euo pipefail
+          cat > /tmp/stub-scanner.py <<'STUB'
+          import sys
+          target = " ".join(sys.argv[1:])
+          sys.exit(0 if "twin" in target else 1)
+          STUB
+          uv run poison-garden run \
+            --scanner "$(uv run python -c 'import sys;print(sys.executable)') /tmp/stub-scanner.py {target}" \
+            --scanner-name "ci-stub" \
+            --out /tmp/ci-result.json
+          uv run python - <<'CHECK'
+          import json, pathlib
+          d = json.loads(pathlib.Path("/tmp/ci-result.json").read_text())
+          assert d["errors"] == [], f"specimens errored in CI: {d['errors']}"
+          assert d["false_positives"]["benign_total"] > 0, "no scorable twins"
+          assert not any(k in json.dumps(d) for k in ('"score"', '"overall"')), "composite score present"
+          print("runner end-to-end OK:", len(d["verdicts"]), "verdicts")
+          CHECK
+
       - name: Validation actually fails on a broken corpus (P50)
         run: |
           set -euo pipefail
