@@ -90,6 +90,26 @@ These are enforced in CI, not promised in prose:
   exploits and are useless lifted out of the corpus.
 - The harness is the only supported way to run them.
 
+## Development
+
+```bash
+# The venv must live OUTSIDE the repo if the repo is under ~/Desktop or another
+# synced/watched tree: something there sets UF_HIDDEN on .venv/**/*.pth, CPython
+# silently skips hidden .pth files, and the editable install stops reaching sys.path.
+# pytest keeps passing; the installed console script breaks.
+export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/poison-garden"
+
+uv sync
+uv run pytest -q
+uv run ruff check .
+```
+
+Diagnose that failure mode with:
+
+```bash
+ls -lO "$UV_PROJECT_ENVIRONMENT"/lib/python3.12/site-packages/*.pth   # `hidden` in flags = broken
+```
+
 ## License
 
 MIT.
