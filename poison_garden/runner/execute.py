@@ -143,11 +143,21 @@ def preflight(specimen: Specimen, env: dict[str, str], timeout: float = 20.0) ->
         return None
     if served is None:
         return "specimen-stdout-not-json"
+    responses = handshake_responses(stdout) or {}
+    if "result" not in responses.get(1, {}):
+        return "specimen-initialize-failed"
     return "specimen-no-catalog"
 
 
-def _catalog_in(stdout: str) -> bool | None:
-    """True if a tools/list result is present, None if stdout is not JSON-RPC, else False."""
+def handshake_responses(stdout: str) -> dict[int, dict] | None:
+    """Parse a specimen's stdout into {request id: message}, or None if it is not JSON-RPC.
+
+    Returns the initialize response too, rather than discarding it. R14's scanner-aware
+    specimen discriminates IN the initialize exchange — that is the message that stops
+    being a formality — so a test asserting two client identities get different catalogs
+    needs the handshake result, not only the catalog.
+    """
+    out: dict[int, dict] = {}
     for line in stdout.splitlines():
         if not line.strip():
             continue
@@ -155,9 +165,27 @@ def _catalog_in(stdout: str) -> bool | None:
             message = json.loads(line)
         except json.JSONDecodeError:
             return None
-        if message.get("id") == 2 and "result" in message:
-            return True
-    return False
+        request_id = message.get("id")
+        if isinstance(request_id, int):
+            out[request_id] = message
+    return out
+
+
+def _catalog_in(stdout: str) -> bool | None:
+    """True if BOTH the initialize and tools/list exchanges succeeded.
+
+    The initialize response used to go uninspected, so a specimen that errored on
+    initialize but answered `tools/list` was classified healthy. A formality in M1, where
+    every specimen answers it identically — and exactly the exchange R14's specimen uses to
+    discriminate, so a scanner-aware specimen refusing our handshake would have been waved
+    through with its evasion unmeasured.
+    """
+    responses = handshake_responses(stdout)
+    if responses is None:
+        return None
+    if "result" not in responses.get(1, {}):
+        return False
+    return "result" in responses.get(2, {})
 
 
 def scan_one(

@@ -962,3 +962,97 @@ def test_each_specimen_gets_a_distinct_egress_sink(tmp_corpus, tmp_path):
     assert len(set(ports)) == len(ports), (
         f"specimens shared one sink, so egress cannot be attributed: {ports}"
     )
+
+
+# --- item 5: the initialize exchange was never inspected ---------------------------------
+
+
+def test_preflight_rejects_a_specimen_that_fails_initialize(tmp_path: Path):
+    """A specimen that errors on initialize but answers tools/list was classified healthy.
+
+    A formality in M1 — every specimen answers it identically — and exactly the exchange
+    R14's scanner-aware specimen uses to discriminate. Such a specimen refusing our
+    handshake while still serving a catalog would have been waved through with its evasion
+    unmeasured.
+    """
+    from poison_garden.corpus.models import Manifest, Specimen
+    from poison_garden.runner.execute import preflight
+
+    d = tmp_path / "bad-init"
+    d.mkdir(parents=True)
+    (d / "server.py").write_text(
+        textwrap.dedent(
+            '''
+            import json, sys
+            for line in sys.stdin:
+                line = line.strip()
+                if not line: continue
+                m = json.loads(line)
+                if m.get("id") is None: continue
+                if m.get("method") == "initialize":
+                    out = {"jsonrpc":"2.0","id":m["id"],
+                           "error":{"code":-32600,"message":"no"}}
+                else:
+                    out = {"jsonrpc":"2.0","id":m["id"],
+                           "result":{"tools":[{"name":"t","description":"d",
+                                     "inputSchema":{"type":"object","properties":{}}}]}}
+                sys.stdout.write(json.dumps(out)+"\\n"); sys.stdout.flush()
+            '''
+        ),
+        encoding="utf-8",
+    )
+    specimen = Specimen(
+        path=d, manifest=Manifest(id="bad-init", summary="x", entrypoint="server.py")
+    )
+    assert preflight(specimen, {"PATH": "/usr/bin:/bin"}, timeout=10.0) == (
+        "specimen-initialize-failed"
+    )
+
+
+def test_preflight_exposes_the_initialize_response(tmp_path: Path):
+    """R14's test needs the handshake result, not only the catalog."""
+    from poison_garden.runner.execute import handshake_responses
+
+    stdout = (
+        '{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"x","version":"1"}}}\n'
+        '{"jsonrpc":"2.0","id":2,"result":{"tools":[]}}\n'
+    )
+    responses = handshake_responses(stdout)
+    assert responses is not None
+    assert responses[1]["result"]["serverInfo"]["name"] == "x"
+    assert "tools" in responses[2]["result"]
+
+
+# --- item 6: the published hash must describe the corpus AS MEASURED ---------------------
+
+
+def test_document_refuses_when_the_corpus_changed_during_the_run(corpus, tmp_path):
+    """R4: two honest runs over one corpus must not cite different hashes.
+
+    A specimen that writes into its own directory — R13's state, an R12 decoy that
+    regenerates — changed the hash computed after the run. `compare()` would then refuse
+    two legitimate documents with nothing saying why.
+    """
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    stale = "sha256:" + "1" * 64
+    with pytest.raises(ScoringRefused, match="changed during the run"):
+        build_document(
+            corpus, results, "stub", ExitCodeMapping(), corpus_hash_before_run=stale
+        )
+
+
+def test_document_records_the_hash_captured_before_the_run(corpus):
+    from poison_garden.corpus.hash import corpus_hash as _hash
+
+    before = _hash(corpus)
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    doc = build_document(
+        corpus, results, "stub", ExitCodeMapping(), corpus_hash_before_run=before
+    )
+    assert doc.payload["corpus"]["hash"] == before

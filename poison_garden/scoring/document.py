@@ -85,8 +85,20 @@ def build_document(
     scanner_name: str,
     mapping: ExitCodeMapping,
     scores: Scores | None = None,
+    corpus_hash_before_run: str | None = None,
 ) -> ResultDocument:
     """Assemble the document. Scoring's refusal rules apply before anything is written."""
+    measured_hash = corpus_hash_before_run or corpus_hash(corpus)
+    if corpus_hash_before_run is not None:
+        after = corpus_hash(corpus)
+        if after != corpus_hash_before_run:
+            raise ScoringRefused(
+                "the corpus changed during the run: "
+                f"before={corpus_hash_before_run} after={after}. A specimen wrote into the "
+                "corpus tree, so the figures describe a corpus that no longer exists. "
+                "Fix the specimen — a corpus must be inert under measurement."
+            )
+
     scores = scores if scores is not None else score_run(corpus, results)
 
     # R9 names the EMITTER: "SHALL refuse to emit a document containing one without the
@@ -108,7 +120,12 @@ def build_document(
         "generated_utc": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "corpus": {
             "version": corpus.version,
-            "hash": corpus_hash(corpus),
+            # The hash AS MEASURED, captured before the run. Computing it afterwards meant a
+            # specimen that wrote into its own directory — plausible for R13's state, or an
+            # R12 decoy that regenerates — changed the hash that got published. Two honest
+            # runs over one corpus would then cite different hashes and `compare()` would
+            # refuse them with nothing saying why (R4).
+            "hash": measured_hash,
             "specimen_count": len(corpus),
         },
         "scanner": {

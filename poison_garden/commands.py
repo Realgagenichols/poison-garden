@@ -87,6 +87,9 @@ def cmd_run(
         return EXIT_TOOL_ERROR
 
     mapping = ExitCodeMapping(flag_on=flag_on)
+
+    # Captured BEFORE the run: this is the corpus the figures describe.
+    hash_before = corpus_hash(corpus)
     results = run_corpus(corpus, command, mapping=mapping, timeout=timeout)
 
     try:
@@ -98,6 +101,7 @@ def cmd_run(
             # and home path in a document meant to be committed to a public repo (S3).
             scanner_name=scanner_name or Path(command.program).name,
             mapping=mapping,
+            corpus_hash_before_run=hash_before,
         )
     except ScoringRefused as exc:
         # Exit 3, not 2: the tool did exactly what R9 requires. CI must be able to tell
