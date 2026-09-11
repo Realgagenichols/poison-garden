@@ -12,7 +12,7 @@ import subprocess
 import sys
 
 import pytest
-from helpers import SPECIMENS, handshake, shipped_specimen_ids
+from helpers import REPO_ROOT, SPECIMENS, handshake, shipped_specimen_ids
 
 from poison_garden.cli import EXIT_OK, main
 from poison_garden.corpus.hash import corpus_hash
@@ -182,6 +182,13 @@ def test_specimen_writes_only_json_rpc_to_stdout(specimen_id: str, corpus):
         timeout=20,
     )
 
+    # Without this the whole test is vacuous: a specimen that crashes on import writes
+    # nothing to stdout, the loop runs zero times, and a scoring-integrity check reports
+    # green (P58). Verified: 0 lines -> 0 iterations -> pass.
+    assert proc.stdout.strip(), (
+        f"{specimen_id}: wrote nothing to stdout. stderr: {proc.stderr[:300]}"
+    )
+
     for lineno, line in enumerate(proc.stdout.splitlines(), 1):
         if not line.strip():
             continue
@@ -212,3 +219,42 @@ def test_specimen_exits_cleanly_when_stdin_closes(specimen_id: str, corpus):
     assert proc.returncode == 0, (
         f"{specimen_id}: exited {proc.returncode} on empty stdin. stderr: {proc.stderr[:200]}"
     )
+
+
+# --- W8: the register must name a corpus state, not float free of one -------------------
+
+
+def test_known_misses_names_the_current_corpus_version(corpus):
+    """P68/P88: a published figure needs a mechanical relation to its source.
+
+    The register's numbers describe one corpus state. If it cites a version the corpus no
+    longer carries, the rows are stale rather than evidence, and nothing else would say so.
+    """
+    register = (REPO_ROOT / "KNOWN-MISSES.md").read_text(encoding="utf-8")
+    assert f"corpus version  {corpus.version}" in register, (
+        f"KNOWN-MISSES does not record the current corpus version ({corpus.version})"
+    )
+
+
+def test_known_misses_names_the_current_corpus_hash(corpus):
+    """A specimen edit moves the hash; the register must then be re-measured, not trusted."""
+    register = (REPO_ROOT / "KNOWN-MISSES.md").read_text(encoding="utf-8")
+    current = corpus_hash(corpus)
+    assert current in register, (
+        f"KNOWN-MISSES records a corpus hash that is no longer current.\n"
+        f"  current: {current}\n"
+        "The corpus changed since the frisk measurement, so those rows describe a corpus "
+        "that no longer exists. Re-run frisk and update the register — do not just edit "
+        "the hash."
+    )
+
+
+def test_every_registered_miss_is_a_real_specimen(corpus):
+    """A register naming absent specimens passes its own count while measuring nothing."""
+    import re as _re
+
+    register = (REPO_ROOT / "KNOWN-MISSES.md").read_text(encoding="utf-8")
+    rows = _re.findall(r"^\|\s*`([a-z0-9-]+)`\s*\|", register, _re.MULTILINE)
+    assert rows, "KNOWN-MISSES registers no specimens"
+    missing = [r for r in rows if corpus.by_id(r) is None]
+    assert not missing, f"register names specimens absent from the corpus: {missing}"

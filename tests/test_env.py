@@ -7,6 +7,7 @@ These assertions run every time instead.
 
 from __future__ import annotations
 
+import ast
 import importlib.metadata
 import sys
 import tomllib
@@ -73,14 +74,83 @@ def test_package_declares_no_runtime_dependencies(pyproject):
 
 
 def test_no_runtime_module_imports_an_undeclared_third_party_package():
-    """Every import in poison_garden/ must be stdlib or first-party, given deps == []."""
+    """Every import in poison_garden/ must be stdlib or first-party, given deps == [].
+
+    Parses the AST rather than matching line prefixes. The prefix version matched exactly
+    two literals (`import mcp`, `from mcp`) and therefore missed `import requests`,
+    `from requests import get`, and every other package that isn't `mcp` — it enforced a
+    specific past mistake rather than the rule in its own docstring.
+
+    That is the same error as reading a source file to learn what a program advertises:
+    the text is not the thing. Here the thing is the import graph, so read the import
+    graph (cross-cutting P98 — a guard that reads source text measures the documentation).
+    """
+    stdlib = set(sys.stdlib_module_names)
+    first_party = {"poison_garden"}
     offenders: list[str] = []
-    for path in (REPO_ROOT / "poison_garden").rglob("*.py"):
-        for lineno, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-            stripped = line.strip()
-            if stripped.startswith(("import mcp", "from mcp")):
+
+    for path in sorted((REPO_ROOT / "poison_garden").rglob("*.py")):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                # level > 0 is a relative import, which is first-party by construction.
+                names = [node.module] if node.module and node.level == 0 else []
+            else:
+                continue
+
+            for name in names:
+                root = name.split(".")[0]
+                if root in stdlib or root in first_party or root == "__future__":
+                    continue
                 rel = path.relative_to(REPO_ROOT)
-                offenders.append(f"{rel}:{lineno}")
+                offenders.append(f"{rel}:{node.lineno} imports '{name}'")
+
     assert not offenders, (
-        f"package imports `mcp` at {offenders} but declares no runtime dependencies"
+        "package declares no runtime dependencies but imports third-party module(s): "
+        f"{offenders}"
     )
+
+
+def test_the_import_check_catches_more_than_one_package():
+    """P31: the prefix version passed this suite while catching only `mcp`.
+
+    Runs the same AST logic over synthetic sources and asserts each is caught. Without
+    this, narrowing the check back to a literal prefix would go unnoticed.
+    """
+    stdlib = set(sys.stdlib_module_names)
+
+    def undeclared(source: str) -> list[str]:
+        found: list[str] = []
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Import):
+                names = [a.name for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [node.module] if node.module and node.level == 0 else []
+            else:
+                continue
+            for name in names:
+                root = name.split(".")[0]
+                if root not in stdlib and root != "poison_garden" and root != "__future__":
+                    found.append(name)
+        return found
+
+    cases = {
+        "import mcp": True,
+        "import requests": True,
+        "from requests import get": True,
+        "import numpy as np": True,
+        "from mcp.server import Server": True,
+        "import json": False,
+        "from pathlib import Path": False,
+        "from poison_garden.corpus import models": False,
+        "from . import models": False,
+        "from __future__ import annotations": False,
+    }
+    wrong = [
+        src
+        for src, should_flag in cases.items()
+        if bool(undeclared(src)) is not should_flag
+    ]
+    assert not wrong, f"import check misclassifies: {wrong}"

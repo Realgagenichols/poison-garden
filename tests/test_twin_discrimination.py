@@ -148,12 +148,8 @@ def test_every_twin_trips_at_least_one_strawman(corpus):
     )
 
 
-def test_strawmen_are_not_vacuous(corpus):
-    """P50/P96: a rule that fires on nothing, or on everything, discriminates nothing.
-
-    Each strawman set must fire on its own MALICIOUS specimens too. A strawman that
-    matched only twins would be measuring the wrong thing entirely.
-    """
+def test_strawmen_fire_on_their_own_malicious_specimens(corpus):
+    """Half one: a rule that fires on nothing discriminates nothing (P50)."""
     silent: list[str] = []
     for klass, patterns in STRAWMEN.items():
         malicious = [s for s in corpus.malicious if klass in s.classes]
@@ -165,6 +161,61 @@ def test_strawmen_are_not_vacuous(corpus):
             silent.append(klass.value)
 
     assert not silent, f"strawman rules fire on no malicious specimen for: {silent}"
+
+
+# A minimal, entirely legitimate catalog built from the same shape every specimen uses.
+# Nothing here is suspicious under any reading. It is the control that makes an over-broad
+# strawman visible.
+INERT_CONTROL = json.dumps(
+    {
+        "tools": [
+            {
+                "name": "add_numbers",
+                "description": "Returns the sum of two integers.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+                    "required": ["a", "b"],
+                },
+            }
+        ]
+    }
+)
+
+
+def test_no_strawman_fires_on_an_inert_control(corpus):
+    """Half two: a rule that fires on EVERYTHING discriminates nothing either (P96).
+
+    The previous version of this test implemented only half its own docstring — it checked
+    that each rule fires on malicious specimens, and had no way to see an over-broad rule.
+    `\\bpath\\b` lived in the scope-mismatch set precisely because nothing could see it;
+    it matched `from pathlib import Path` in every specimen ever written.
+
+    Removing that one pattern fixed the instance. This fixes the blind spot: any future
+    rule loose enough to match an adding-two-integers server fails here on the day it is
+    added, instead of quietly making a twin's assertion unfalsifiable.
+    """
+    overbroad: list[str] = []
+    for klass, patterns in STRAWMEN.items():
+        for pattern in patterns:
+            if pattern.search(INERT_CONTROL):
+                overbroad.append(f"{klass.value}: {pattern.pattern}")
+
+    assert not overbroad, (
+        "these strawman rules fire on a server that merely adds two integers, so they "
+        f"cannot demonstrate anything about a twin: {overbroad}"
+    )
+
+
+def test_the_inert_control_is_genuinely_inert(corpus):
+    """Vacuity guard on the control itself (P21).
+
+    A control only works if it resembles the real thing. This asserts the control carries
+    the same structural vocabulary every specimen has — so 'no strawman matched' means the
+    rules are tight, not that the control was too thin to match anything.
+    """
+    for marker in ("tools", "name", "description", "inputSchema", "type", "properties"):
+        assert marker in INERT_CONTROL, f"control lacks {marker}; it is not representative"
 
 
 def test_twins_are_labelled_benign_despite_tripping_naive_rules(corpus):

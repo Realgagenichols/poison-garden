@@ -19,6 +19,20 @@ Verified by `scripts/audit_n1_independence.py`.
 
 ## Corpus v0.1.0 (unreleased)
 
+**Corpus state these numbers describe** — without this, an edit to any specimen silently
+invalidates every row below and nothing says so (R4 exists to prevent exactly that):
+
+```
+corpus version  0.1.0
+corpus hash     sha256:2ec368416970d6cae663ac8820200c92d9f3b0ab03ec3e49448f451f2bf64c49
+scanner         mcp-frisk 0.2.0
+measured        2026-09-11
+```
+
+Re-measure and update both the hash and the rows whenever either the corpus or frisk moves.
+A row whose corpus hash no longer matches `poison-garden hash --corpus specimens` is stale,
+not evidence.
+
 **Measured 2026-09-11** against `mcp-frisk` 0.2.0, using:
 
 ```sh
