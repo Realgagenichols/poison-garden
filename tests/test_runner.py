@@ -6,6 +6,7 @@ two of them written specifically to prevent vacuity.
 
 from __future__ import annotations
 
+import json
 import sys
 import textwrap
 from pathlib import Path
@@ -547,3 +548,125 @@ def _echo_server() -> str:
             sys.stdout.flush()
         '''
     )
+
+
+# --- W2: a served catalog is a served catalog, even from a long-lived specimen -----------
+
+
+def _long_lived_specimen(tmp_path: Path) -> Path:
+    """Answers both requests correctly, then keeps serving — M3's R13/R14 shape."""
+    d = tmp_path / "longlived"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "server.py").write_text(
+        _echo_server() + "\nimport time\ntime.sleep(300)\n", encoding="utf-8"
+    )
+    (d / "manifest.toml").write_text(
+        'id = "longlived"\nsummary = "serves then stays alive"\ndeclaration = ["injection"]\n',
+        encoding="utf-8",
+    )
+    return d
+
+
+def test_preflight_accepts_a_specimen_that_serves_then_stays_alive(tmp_path: Path):
+    """REGRESSION (W2): `subprocess.run(input=...)` reads stdout to EOF, so it waits for
+    the process to EXIT, not for the catalog to arrive.
+
+    A specimen that answers `initialize` and `tools/list` correctly and then keeps serving
+    used to time out and be classified `error` — leaving both numerator and denominator
+    despite having done nothing R7 describes. Latent while every shipped specimen exits on
+    stdin close; not latent once M3 lands multi-enumeration servers.
+    """
+    from poison_garden.corpus.models import Manifest, Specimen
+    from poison_garden.runner.execute import preflight
+
+    d = _long_lived_specimen(tmp_path)
+    specimen = Specimen(
+        path=d, manifest=Manifest(id="longlived", summary="x", entrypoint="server.py")
+    )
+    assert preflight(specimen, {"PATH": "/usr/bin:/bin"}, timeout=5.0) is None
+
+
+def test_preflight_still_rejects_a_specimen_that_serves_nothing(tmp_path: Path):
+    """Control (P21): the W2 fix must not turn every timeout into a pass."""
+    from poison_garden.corpus.models import Manifest, Specimen
+    from poison_garden.runner.execute import preflight
+
+    d = tmp_path / "silent"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "server.py").write_text("import time\ntime.sleep(300)\n", encoding="utf-8")
+    specimen = Specimen(
+        path=d, manifest=Manifest(id="silent", summary="x", entrypoint="server.py")
+    )
+    assert preflight(specimen, {"PATH": "/usr/bin:/bin"}, timeout=3.0) == (
+        "specimen-handshake-timeout"
+    )
+
+
+# --- W3 / W4: cmd_run had no test of any kind -------------------------------------------
+
+
+def test_cmd_run_writes_a_valid_document(tmp_path: Path, capsys):
+    """W4: `grep cmd_run tests/` returned zero hits. The CLI path a vendor actually runs."""
+    from poison_garden.commands import cmd_run
+
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(1)")
+    out = tmp_path / "result.json"
+    code = cmd_run(
+        corpus_root=str(SPECIMENS),
+        scanner=f"{sys.executable} {stub} {PLACEHOLDER}",
+        out=str(out),
+        scanner_name="unit-test",
+    )
+    capsys.readouterr()
+
+    assert code == 0
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["scanner"]["name"] == "unit-test"
+    assert len(payload["verdicts"]) == 18
+    assert payload["errors"] == []
+
+
+def test_cmd_run_does_not_publish_the_scanner_path(tmp_path: Path, capsys):
+    """REGRESSION (W3): scanner_name defaulted to argv[0] verbatim, absolute path included.
+
+    A scanner at ~/.local/bin/mcp-scan would have published the username and home path into
+    a document meant to be committed to a public repo. The existing S3 test could not catch
+    this: it passes an explicit scanner_name, so the default branch was never exercised and
+    its `str(spy) not in rendered` assertion was true by construction.
+    """
+    from poison_garden.commands import cmd_run
+
+    bindir = tmp_path / "home-ish" / ".local" / "bin"
+    bindir.mkdir(parents=True)
+    # Genuinely executable, so argv[0] can BE the absolute path — which is the whole
+    # point: a scanner installed at ~/.local/bin/<name> is the realistic case.
+    stub = bindir / "my-scanner.py"
+    stub.write_text(f"#!{sys.executable}\nimport sys\nsys.exit(0)\n", encoding="utf-8")
+    stub.chmod(0o755)
+    out = tmp_path / "result.json"
+
+    cmd_run(
+        corpus_root=str(SPECIMENS),
+        scanner=f"{stub} {PLACEHOLDER}",  # argv[0] is an ABSOLUTE path
+        out=str(out),
+    )
+    capsys.readouterr()
+
+    rendered = out.read_text(encoding="utf-8")
+    payload = json.loads(rendered)
+    assert payload["scanner"]["name"] == "my-scanner.py", "expected the basename only"
+    assert str(bindir) not in rendered, "the scanner's directory reached the document"
+    assert str(tmp_path) not in rendered
+
+
+def test_cmd_run_rejects_a_template_without_a_placeholder(tmp_path: Path, capsys):
+    from poison_garden.commands import cmd_run
+
+    code = cmd_run(
+        corpus_root=str(SPECIMENS),
+        scanner="scanner --all",
+        out=str(tmp_path / "never.json"),
+    )
+    assert code == 2
+    assert "target" in capsys.readouterr().err
+    assert not (tmp_path / "never.json").exists(), "no document on a refused template"

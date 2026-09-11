@@ -120,21 +120,44 @@ def preflight(specimen: Specimen, env: dict[str, str], timeout: float = 20.0) ->
             timeout=timeout,
             env=env,
         )
-    except subprocess.TimeoutExpired:
+        stdout = proc.stdout
+    except subprocess.TimeoutExpired as exc:
+        # `subprocess.run(input=...)` reads stdout to EOF, so it waits for the process to
+        # EXIT, not for the catalog to arrive. A specimen that answers correctly and then
+        # keeps serving — which is exactly the shape of M3's namesake-rug-pull (R13) and
+        # scanner-aware (R14) specimens — timed out here and was classified `error`,
+        # leaving both numerator and denominator despite having done nothing wrong.
+        # R7 reserves `error` for a specimen that fails to start, fails its handshake, or
+        # times out; a specimen that served its catalog did none of the three.
+        stdout = exc.stdout or ""
+        if isinstance(stdout, bytes):
+            stdout = stdout.decode("utf-8", errors="replace")
+        if _catalog_in(stdout) is True:
+            return None
         return "specimen-handshake-timeout"
     except OSError as exc:
         return f"specimen-spawn-failed:{type(exc).__name__}"
 
-    for line in proc.stdout.splitlines():
+    served = _catalog_in(stdout)
+    if served is True:
+        return None
+    if served is None:
+        return "specimen-stdout-not-json"
+    return "specimen-no-catalog"
+
+
+def _catalog_in(stdout: str) -> bool | None:
+    """True if a tools/list result is present, None if stdout is not JSON-RPC, else False."""
+    for line in stdout.splitlines():
         if not line.strip():
             continue
         try:
             message = json.loads(line)
         except json.JSONDecodeError:
-            return "specimen-stdout-not-json"
-        if message.get("id") == 2 and "result" in message:
             return None
-    return "specimen-no-catalog"
+        if message.get("id") == 2 and "result" in message:
+            return True
+    return False
 
 
 def scan_one(

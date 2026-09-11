@@ -13,6 +13,7 @@ milder result and the wrong one. R4's hash command has the same discipline.
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from poison_garden.cli import (
     EXIT_CORPUS_INVALID,
@@ -88,7 +89,10 @@ def cmd_run(
         document = build_document(
             corpus,
             results,
-            scanner_name=scanner_name or command.program,
+            # basename only: `command.program` is the template's argv[0] verbatim, so a
+            # scanner installed at ~/.local/bin/mcp-scan would publish the user's username
+            # and home path in a document meant to be committed to a public repo (S3).
+            scanner_name=scanner_name or Path(command.program).name,
             mapping=mapping,
         )
     except ScoringRefused as exc:
