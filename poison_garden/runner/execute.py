@@ -22,7 +22,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from poison_garden.corpus.models import Corpus, Specimen
-from poison_garden.runner.sandbox import Sandbox, build_home
+from poison_garden.runner.sandbox import sandbox
 from poison_garden.runner.target import ScannerCommand, target_argv
 
 DEFAULT_TIMEOUT = 120.0
@@ -173,7 +173,11 @@ def scan_one(
     # Forward the caller's timeout. preflight defaulted to 20s regardless of --timeout, so
     # `--timeout 5` still spent 20s per unstartable specimen and `--timeout 300` gave a
     # slow-starting one only 20.
-    reason = preflight(specimen, env, timeout=min(timeout, 60.0))
+    # Floored at 5s: `--timeout 2` for a fast scanner would otherwise buy a 2-second
+    # handshake budget, and a cold interpreter plus an import-heavy M3 specimen can miss
+    # that. Capped at 60s so a generous scanner timeout does not multiply the wait on a
+    # specimen that will never start.
+    reason = preflight(specimen, env, timeout=max(5.0, min(timeout, 60.0)))
     if reason is not None:
         return SpecimenResult(specimen.id, Verdict.ERROR, error_reason=reason)
 
@@ -242,20 +246,24 @@ def run_corpus(
     """
     mapping = mapping or ExitCodeMapping()
     results: list[SpecimenResult] = []
+    egress_attempts: list[bytes] = []
 
-    with tempfile.TemporaryDirectory(prefix="pg-run-") as td:
-        root = Path(td)
-        home, canaries = build_home(root)
-        box = Sandbox(
-            home=home,
-            canaries=canaries,
-            egress_host="127.0.0.1",
-            egress_port=0,
-            probe_result=root / "probe-result.json",
-        )
+    # Use the real `sandbox()` helper, which STARTS an egress sink. The previous version
+    # hand-built a Sandbox with a literal `egress_port=0` — not a connectable address, with
+    # nothing listening — so `PG_EGRESS_SINK` pointed at `127.0.0.1:0` and any specimen
+    # that tried to exfiltrate simply failed to connect. Invisible while every specimen is
+    # a pure declaration; wrong the moment M3's R11/R12 specimens exist, because their
+    # behaviour would have had no collector on the one path a vendor actually runs.
+    with tempfile.TemporaryDirectory(prefix="pg-run-") as td, sandbox(Path(td)) as (box, sink):
         env = box.env()
 
         for specimen in corpus.specimens:
             results.append(scan_one(specimen, scanner, env, mapping, timeout))
+
+        if sink.attempt_count:
+            # Recorded, not scored. Whether an egress attempt during OUR pre-flight should
+            # influence a scanner's verdict is an M3 question; silently discarding the
+            # observation is not an answer to it.
+            egress_attempts.extend(sink.received())
 
     return results

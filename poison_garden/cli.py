@@ -73,7 +73,14 @@ def build_parser() -> argparse.ArgumentParser:
         default="nonzero",
         help="'nonzero' (default) or a minimum exit code that counts as flagged",
     )
-    p_run.add_argument("--timeout", type=float, default=120.0, help="per-specimen seconds")
+    p_run.add_argument(
+        "--timeout",
+        type=float,
+        default=120.0,
+        help="seconds allowed for the SCANNER per specimen. A pre-flight handshake of "
+             "max(5, min(timeout, 60))s may precede it, so worst case per specimen is the "
+             "sum of the two.",
+    )
 
     return parser
 

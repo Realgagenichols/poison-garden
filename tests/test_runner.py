@@ -795,3 +795,86 @@ def test_scoring_refuses_duplicate_results(corpus):
     results.append(SpecimenResult(corpus.specimens[0].id, Verdict.CLEAN, 0))
     with pytest.raises(ScoringRefused, match="more than one result"):
         score_run(corpus, results)
+
+
+# --- (a)2: the product path must hand specimens a REAL, listening sink -------------------
+
+
+def test_run_corpus_gives_specimens_a_connectable_egress_sink(tmp_corpus, tmp_path):
+    """REGRESSION: `run_corpus` hand-built a Sandbox with a literal `egress_port=0`.
+
+    Port 0 is not a connectable address and nothing was listening, so `PG_EGRESS_SINK`
+    pointed at `127.0.0.1:0` and any exfiltration attempt simply failed to connect.
+    Invisible while every specimen is a pure declaration; wrong the moment M3's R11/R12
+    specimens exist, because their behaviour would have had no collector on the one path a
+    vendor actually runs.
+    """
+    reporter = tmp_path / "sink.txt"
+    # The specimen reports the address it was handed AND whether it could actually reach
+    # it. Liveness has to be proven from INSIDE the run: the sink is torn down when
+    # run_corpus returns, so connecting afterwards proves nothing either way.
+    server = textwrap.dedent(
+        f'''
+        import os, socket
+        addr = os.environ.get("PG_EGRESS_SINK", "")
+        host, _, port = addr.rpartition(":")
+        try:
+            with socket.create_connection((host, int(port)), timeout=2) as c:
+                c.sendall(b"exfil")
+            reached = "yes"
+        except Exception as exc:
+            reached = f"no:{{type(exc).__name__}}"
+        open({str(reporter)!r}, "w").write(addr + " " + reached)
+        '''
+    ) + _echo_server()
+    root = tmp_corpus(
+        [
+            {"id": "p", "declaration": ["injection"], "server_text": server},
+            {"id": "t", "twin_for": ["injection"], "server_text": _echo_server()},
+        ]
+    )
+    corpus = load_corpus(root)
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(0)")
+    run_corpus(corpus, parse_scanner(f"{sys.executable} {stub} {PLACEHOLDER}"))
+
+    addr, reached = reporter.read_text(encoding="utf-8").split(" ", 1)
+    host, _, port = addr.rpartition(":")
+
+    assert host == "127.0.0.1", f"sink host is {host!r}"
+    assert int(port) > 0, f"sink port is {port!r} — port 0 is not connectable"
+    assert reached == "yes", (
+        f"specimen could not reach the sink it was handed ({reached}); the address is "
+        "plausible-looking but nothing is listening"
+    )
+
+
+def test_preflight_timeout_has_a_floor_and_a_cap(tmp_corpus, tmp_path):
+    """N-c: `--timeout 2` used to buy a 2s handshake budget; `--timeout 300` gave 20s."""
+    from poison_garden.runner import execute as _execute
+
+    seen: list[float] = []
+    real = _execute.preflight
+
+    def spy(specimen, env, timeout=20.0):
+        seen.append(timeout)
+        return real(specimen, env, timeout=timeout)
+
+    root = tmp_corpus(
+        [
+            {"id": "p", "declaration": ["injection"], "server_text": _echo_server()},
+            {"id": "t", "twin_for": ["injection"], "server_text": _echo_server()},
+        ]
+    )
+    corpus = load_corpus(root)
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(0)")
+    command = parse_scanner(f"{sys.executable} {stub} {PLACEHOLDER}")
+
+    _execute.preflight = spy
+    try:
+        run_corpus(corpus, command, timeout=2.0)
+        assert min(seen) >= 5.0, f"floor not applied: {seen}"
+        seen.clear()
+        run_corpus(corpus, command, timeout=300.0)
+        assert max(seen) <= 60.0, f"cap not applied: {seen}"
+    finally:
+        _execute.preflight = real
