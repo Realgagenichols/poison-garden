@@ -28,7 +28,12 @@ from poison_garden.runner.target import (
     parse_scanner,
     target_argv,
 )
-from poison_garden.scoring.document import FORBIDDEN_FIELDS, build_document, compare
+from poison_garden.scoring.document import (
+    FORBIDDEN_FIELDS,
+    build_document,
+    compare,
+    composite_fields_in,
+)
 from poison_garden.scoring.score import ScoringRefused, score_run
 
 
@@ -165,6 +170,55 @@ def test_broken_specimen_is_error_and_does_not_abort_the_run(tmp_corpus, tmp_pat
     assert hygiene.recall is None, "no recall exists for a class with nothing scorable"
     assert "broken" in scores.errored
 
+    # R7 says errors are reported PROMINENTLY. These are the fields that discharge that,
+    # and all three could be hardwired empty with the whole suite green.
+    assert hygiene.errored == ("broken",), "per-class errored list is not populated"
+    assert scores.benign_errored == (), "benign_errored must reflect the actual run"
+
+
+def test_missed_list_names_the_specimens_that_were_missed(corpus):
+    """`missed` is how a document says which specimens a scanner failed to catch.
+
+    It could be hardwired to `()` with every test green — a scanner could then publish
+    recall 0.5 with `"missed": []` and this corpus's own suite would certify it.
+    """
+    target = next(s for s in corpus.malicious if len(s.classes) == 1)
+    klass = next(iter(target.classes))
+
+    results = [
+        SpecimenResult(
+            s.id,
+            Verdict.CLEAN if (s.is_benign or s.id == target.id) else Verdict.FLAGGED,
+            1,
+        )
+        for s in corpus.specimens
+    ]
+    scores = score_run(corpus, results)
+    entry = next(c for c in scores.per_class if c.klass is klass)
+
+    assert entry.missed == (target.id,), f"missed list did not name {target.id}"
+    for other in scores.per_class:
+        if other.klass is not klass:
+            assert target.id not in other.missed
+
+
+def test_benign_errored_is_populated_when_a_twin_breaks(tmp_corpus, tmp_path):
+    root = tmp_corpus(
+        [
+            {"id": "p", "declaration": ["injection"], "server_text": _echo_server()},
+            {"id": "t-ok", "twin_for": ["injection"], "server_text": _echo_server()},
+            {"id": "t-broken", "twin_for": ["injection"],
+             "server_text": "import sys; sys.exit(1)"},
+        ]
+    )
+    corpus = load_corpus(root)
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(0)")
+    results = run_corpus(corpus, parse_scanner(f"{sys.executable} {stub} {PLACEHOLDER}"))
+    scores = score_run(corpus, results)
+
+    assert scores.benign_errored == ("t-broken",)
+    assert scores.benign_total == 1, "a broken twin must leave the FP denominator"
+
 
 def test_error_and_clean_are_distinguishable(corpus):
     """P55: two empties are two findings."""
@@ -256,6 +310,25 @@ def test_flipping_one_verdict_moves_exactly_one_class(corpus):
     assert changed == {klass}, f"expected only {klass.value} to move, got {changed}"
 
 
+def test_forbidden_field_list_is_pinned():
+    """The R10 guard iterated this set, so emptying it made the guard pass for free.
+
+    Measured: with `FORBIDDEN_FIELDS = frozenset()` and a `"score"` injected into the
+    payload, all 351 tests passed and every published document would have carried a
+    headline number. Pinning the set exactly means removing an entry is a deliberate edit
+    to this line, not a silent nullification (P104 — put the vacuity guard inside the
+    assertion it protects).
+    """
+    assert sorted(FORBIDDEN_FIELDS) == [
+        "grade",
+        "overall",
+        "rank",
+        "rating",
+        "score",
+        "total_score",
+    ]
+
+
 def test_document_has_no_composite_score(corpus):
     """R10 scenario."""
     results = [
@@ -263,9 +336,29 @@ def test_document_has_no_composite_score(corpus):
         for s in corpus.specimens
     ]
     doc = build_document(corpus, results, "stub", ExitCodeMapping())
-    rendered = doc.to_json()
-    for field in FORBIDDEN_FIELDS:
-        assert f'"{field}"' not in rendered, f"document contains a composite field: {field}"
+    assert composite_fields_in(doc.payload) == []
+
+
+def test_the_composite_check_actually_fires(corpus):
+    """POSITIVE CONTROL: inject a headline number, the check must catch it."""
+    results = [SpecimenResult(s.id, Verdict.CLEAN, 0) for s in corpus.specimens]
+    doc = build_document(corpus, results, "stub", ExitCodeMapping())
+
+    for injected in ("score", "overall_recall", "final_grade", "rank"):
+        poisoned = dict(doc.payload)
+        poisoned[injected] = 0.93
+        assert composite_fields_in(poisoned) == [injected], (
+            f"a field named {injected!r} would ship undetected"
+        )
+
+
+def test_composite_check_reaches_nested_fields(corpus):
+    """A headline number hidden one level down must still be caught."""
+    results = [SpecimenResult(s.id, Verdict.CLEAN, 0) for s in corpus.specimens]
+    doc = build_document(corpus, results, "stub", ExitCodeMapping())
+    poisoned = dict(doc.payload)
+    poisoned["corpus"] = {**poisoned["corpus"], "score": 1.0}
+    assert composite_fields_in(poisoned) == ["corpus.score"]
 
 
 def test_document_figures_are_recomputable_from_its_own_verdicts(corpus):

@@ -214,10 +214,9 @@ class EgressSink:
         # Only release the server once the accept loop has genuinely exited. Nulling it
         # while that thread is live made it call `None.accept()` — an AttributeError, not
         # an OSError, so it escaped the handler entirely inside a daemon thread.
-        if thread is None or not thread.is_alive():
-            if self._server is not None:
-                self._server.close()
-                self._server = None
+        if (thread is None or not thread.is_alive()) and self._server is not None:
+            self._server.close()
+            self._server = None
 
     @property
     def attempt_count(self) -> int:

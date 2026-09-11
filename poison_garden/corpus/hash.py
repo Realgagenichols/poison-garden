@@ -15,13 +15,20 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from poison_garden.corpus.models import Corpus, Specimen
+from poison_garden.corpus.models import (
+    IGNORED_DIR_NAMES as _IGNORED_DIRS,
+)
+from poison_garden.corpus.models import (
+    IGNORED_FILE_NAMES as _IGNORED_NAMES,
+)
+from poison_garden.corpus.models import (
+    Corpus,
+    Specimen,
+)
 
 HASH_ALGORITHM = "sha256"
 _DIGEST_PREFIX = "sha256:"
 
-from poison_garden.corpus.models import IGNORED_DIR_NAMES as _IGNORED_DIRS
-from poison_garden.corpus.models import IGNORED_FILE_NAMES as _IGNORED_NAMES
 
 
 def corpus_hash(corpus: Corpus) -> str:

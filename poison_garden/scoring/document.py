@@ -31,9 +31,34 @@ from poison_garden.scoring.score import Scores, score_run
 
 SCHEMA_VERSION = "poison-garden/result@1"
 
-# Fields a reader might expect but which are deliberately absent. Asserted by tests, so
-# adding a composite score requires deleting this list on purpose rather than by accident.
+# Fields a reader might expect but which are deliberately absent (R10). Tests pin this set
+# EXACTLY, because a guard that iterates a list can be nullified by emptying the list — the
+# check keeps passing and a composite score ships.
 FORBIDDEN_FIELDS = frozenset({"score", "overall", "total_score", "grade", "rating", "rank"})
+
+
+def composite_fields_in(payload: object, _path: str = "") -> list[str]:
+    """Every key in the document that reads as an aggregate score.
+
+    Walks KEYS rather than matching substrings in the rendered JSON. A substring check for
+    `"overall"` does not match a field named `overall_recall`, so the obvious way to add a
+    headline number would have slipped straight past it.
+    """
+    found: list[str] = []
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            here = f"{_path}.{key}" if _path else key
+            lowered = key.lower()
+            if any(
+                lowered == bad or lowered.startswith(f"{bad}_") or lowered.endswith(f"_{bad}")
+                for bad in FORBIDDEN_FIELDS
+            ):
+                found.append(here)
+            found.extend(composite_fields_in(value, here))
+    elif isinstance(payload, list):
+        for index, item in enumerate(payload):
+            found.extend(composite_fields_in(item, f"{_path}[{index}]"))
+    return found
 
 
 @dataclass(frozen=True)
@@ -116,7 +141,9 @@ def build_document(
     return ResultDocument(payload=payload)
 
 
-def compare(a: ResultDocument, b: ResultDocument, *, label_a: str = "a", label_b: str = "b") -> None:
+def compare(
+    a: ResultDocument, b: ResultDocument, *, label_a: str = "a", label_b: str = "b"
+) -> None:
     """Refuse to compare documents describing different corpora (R4).
 
     Completes R4's scenario: M1 built `refuse_mismatch`, this is the consumer it was

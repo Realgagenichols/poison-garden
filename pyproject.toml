@@ -26,8 +26,11 @@ poison-garden = "poison_garden.cli:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.0",
-    "ruff>=0.4",
+    # Pinned exactly, not a range: an unbounded ruff turned three previously-clean
+    # files red on an upgrade resolved into uv.lock, with no code change of ours
+    # (cross-cutting P5). Bump deliberately, with the fixes in the same commit.
+    "pytest>=8.0,<10",
+    "ruff==0.16.7",
     # Not imported by the package. Kept in dev so the M2 runner's client work and
     # the SDK-compatibility checks have it available.
     "mcp>=1.27.2,<1.28",
