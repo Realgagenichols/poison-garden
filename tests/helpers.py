@@ -7,15 +7,15 @@ relatively. pytest puts the test directory on `sys.path`, which makes `from help
 
 from __future__ import annotations
 
+import atexit
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 
-from poison_garden.runner.sandbox import build_home, sandbox
+from poison_garden.runner.sandbox import EgressSink, Sandbox, build_home
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPECIMENS = REPO_ROOT / "specimens"
@@ -58,34 +58,62 @@ def handshake(
     return [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
 
 
-@contextmanager
-def sandboxed_specimen_env() -> Iterator[dict[str, str]]:
-    """A throwaway environment for running a shipped specimen inside the test suite."""
-    with tempfile.TemporaryDirectory() as td, sandbox(Path(td)) as (box, _sink):
-        yield box.env()
+_SESSION_SANDBOX: tuple[Sandbox, EgressSink] | None = None
+
+
+def _session_sandbox() -> Sandbox:
+    """One throwaway world for the whole test session.
+
+    Returns a real `Sandbox`, so `handshake()` uses `Sandbox.env()` itself rather than a
+    second hand-written copy of the allowlist. The first version of this function
+    duplicated that allowlist and had already drifted — missing LANG, PG_EGRESS_SINK and
+    PG_PROBE_RESULT — which is P95 (one predicate spelled twice drifts, and the copy in
+    the other runtime fails silently). It is worse than the usual case here, because this
+    copy is what decides whether the TEST SUITE is sandboxed. When the scrub in
+    `Sandbox.env()` evolves, this must evolve with it, and the only way to guarantee that
+    is to not have a second one.
+
+    Session-scoped rather than per-call: one home instead of ~40, torn down at exit.
+    """
+    global _SESSION_SANDBOX
+    if _SESSION_SANDBOX is None:
+        root = Path(tempfile.mkdtemp(prefix="pg-session-"))
+        home, canaries = build_home(root)
+        sink = EgressSink().start()
+        box = Sandbox(
+            home=home,
+            canaries=canaries,
+            egress_host=sink.host,
+            egress_port=sink.port,
+            probe_result=root / "probe-result.json",
+        )
+        _SESSION_SANDBOX = (box, sink)
+
+        def _teardown() -> None:
+            sink.stop()
+            shutil.rmtree(root, ignore_errors=True)
+
+        atexit.register(_teardown)
+
+    return _SESSION_SANDBOX[0]
+
+
+def session_sink() -> EgressSink:
+    """The session sandbox's egress sink, for tests that assert on egress attempts."""
+    _session_sandbox()
+    assert _SESSION_SANDBOX is not None
+    return _SESSION_SANDBOX[1]
 
 
 def _sandboxed_env() -> dict[str, str]:
-    """Default environment for `handshake`.
+    """Default environment for `handshake` — the real `Sandbox.env()`, never a copy.
 
-    The suite used to spawn shipped specimens with the REAL inherited environment — real
+    The suite used to spawn shipped specimens with the REAL inherited environment: real
     `$HOME`, real `~/.ssh`, full network. Harmless while every specimen is a pure
-    declaration, and actively dangerous the day M3 lands a credential-access or egress
-    specimen: the harness's own tests would be the one place that bypasses the harness.
-
-    Creates a fresh throwaway home per call and leaves it behind for the OS to reap; the
-    caller gets no handle to it because these tests only inspect served catalogs. Use
-    `sandboxed_specimen_env()` when the decoys or the egress sink matter.
+    declaration, and dangerous the day M3 lands a credential-access or egress specimen —
+    the harness's own tests would be the one place that bypasses the harness.
     """
-    root = Path(tempfile.mkdtemp(prefix="pg-handshake-"))
-    home, _canaries = build_home(root)
-    return {
-        "PATH": "/usr/bin:/bin",
-        "HOME": str(home),
-        "USERPROFILE": str(home),
-        "TMPDIR": str(root / "tmp"),
-        "PYTHONHASHSEED": "0",
-    }
+    return _session_sandbox().env()
 
 
 def shipped_specimen_ids() -> list[str]:

@@ -107,27 +107,42 @@ def gather_specimens(specimens_root: Path) -> list[tuple[str, str]]:
     Python boilerplate (`import sys`, `from pathlib import Path`) and JSON Schema
     structure, which every MCP server on earth has in common (cross-cutting P86 — a number
     can be measured and still be about the wrong object).
-    """
-    out: list[tuple[str, str]] = []
-    for directory in sorted(specimens_root.iterdir()):
-        if not directory.is_dir() or directory.name.startswith(("_", ".")):
-            continue
-        entrypoint = directory / "server.py"
-        if not entrypoint.is_file():
-            continue
 
-        served = _serve_catalog(entrypoint)
+    The population comes from `load_corpus()`, not from globbing for `server.py`. A
+    specimen may legitimately declare a subdirectory entrypoint, and hardcoding the
+    filename meant any such specimen was silently skipped while the audit still printed
+    "N1 OK" over a quietly smaller denominator — the same silent-shrink failure the loader
+    refuses on principle (P84: ask what an item must DO to appear in the output).
+    """
+    from poison_garden.corpus.loader import load_corpus
+
+    corpus = load_corpus(specimens_root)
+    out: list[tuple[str, str]] = []
+
+    for specimen in corpus.specimens:
+        try:
+            served = _serve_catalog(specimen.entrypoint_path)
+        except Exception as exc:
+            # Never skip. A specimen the audit cannot run is an audit that cannot make a
+            # claim about this corpus.
+            raise RuntimeError(
+                f"{specimen.id}: could not enumerate ({type(exc).__name__}). "
+                "Refusing to report an N1 result over a partial corpus."
+            ) from exc
+
         strings = _strings_from(served)
 
-        # The manifest's own prose is authored content too, so it counts.
-        manifest = directory / "manifest.toml"
-        if manifest.is_file():
-            strings.append(manifest.read_text(encoding="utf-8"))
+        # Every shipped file's text counts as authored content, not just the entrypoint:
+        # manifests carry `summary` and `notes`, which is prose a human wrote.
+        for path in specimen.files():
+            if path.suffix in {".toml", ".md", ".txt", ".json"}:
+                strings.append(path.read_text(encoding="utf-8", errors="replace"))
 
         text = "\n".join(strings)
         for forced in _FORCED_PHRASINGS:
             text = text.replace(forced, " ")
-        out.append((directory.name, text))
+        out.append((specimen.id, text))
+
     return out
 
 

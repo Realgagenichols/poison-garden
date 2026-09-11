@@ -199,8 +199,24 @@ _ALLOWED_HOSTS = {"localhost", "127.0.0.1", "example.com", "example.org", "examp
 
 
 def _shipped_specimen_sources() -> list[Path]:
-    """Derived from disk, never a hardcoded list — a hardcoded one goes stale silently."""
-    return sorted(SPECIMENS_DIR.rglob("*.py"))
+    """EVERY file shipped in the corpus, from the loader's own definition.
+
+    Not `rglob("*.py")`. A specimen ships whatever files it contains and all of them are
+    hashed, so globbing Python left `manifest.toml` shipped, hashed, and never scanned —
+    despite carrying author prose (`summary`, `notes`) where a hostname would plausibly
+    land. A future `payload.json` or `hosts.txt` would have been invisible the same way.
+
+    Sourcing the population from `Specimen.files()` means "the files in the corpus" has a
+    single definition feeding both the hash and this scan, so the two cannot drift (P95).
+    """
+    from poison_garden.corpus.loader import load_corpus
+
+    if not SPECIMENS_DIR.is_dir():
+        return []
+    files = [path for s in load_corpus(SPECIMENS_DIR).specimens for path in s.files()]
+    # Shared harness modules are shipped and hashed too, so they are scanned too.
+    files += sorted(SPECIMENS_DIR.glob("_*.py"))
+    return sorted(files)
 
 
 def test_there_are_specimen_sources_to_scan():

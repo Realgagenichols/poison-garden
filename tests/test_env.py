@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import importlib.metadata
+import re
 import sys
 import tomllib
 from pathlib import Path
@@ -41,12 +42,25 @@ def test_python_version_pin_matches_requires_python(pyproject):
 
 
 def test_every_tested_python_has_a_classifier(pyproject):
-    """CI matrixes 3.12 and 3.13; both must be declared or the metadata understates support."""
+    """CI's matrix and the package classifiers must agree.
+
+    Parses the matrix and asserts it is non-empty FIRST. The previous version was
+    `if f'"{version}"' in ci:` — conditional on CI's quoting style, so switching the YAML
+    to unquoted `python: [3.12, 3.13]` would have made the check silently no-op rather
+    than fail (P50: a check whose green is guaranteed by how you spelled something else
+    is not a check).
+    """
     ci = (REPO_ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
+
+    match = re.search(r"^\s*python:\s*\[(.+?)\]\s*$", ci, re.MULTILINE)
+    assert match, "could not find the python matrix in ci.yml — this check would be vacuous"
+
+    tested = [v.strip().strip("\"'") for v in match.group(1).split(",")]
+    assert tested, "the python matrix parsed as empty"
+
     classifiers = " ".join(pyproject["project"]["classifiers"])
-    for version in ("3.12", "3.13"):
-        if f'"{version}"' in ci:
-            assert version in classifiers, f"CI tests {version} but no classifier declares it"
+    missing = [v for v in tested if v not in classifiers]
+    assert not missing, f"CI tests {missing} but no classifier declares them"
 
 
 def test_mcp_sdk_imports_and_pin_is_honoured():

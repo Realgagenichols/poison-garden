@@ -12,6 +12,10 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from pathlib import Path
 
+# Files and directories that are never part of a specimen's shipped identity.
+IGNORED_FILE_NAMES: frozenset[str] = frozenset({".DS_Store"})
+IGNORED_DIR_NAMES: frozenset[str] = frozenset({"__pycache__"})
+
 
 class Class(StrEnum):
     """An attack family.
@@ -121,6 +125,25 @@ class Specimen:
     @property
     def twin_for(self) -> frozenset[Class]:
         return frozenset(self.manifest.twin_for)
+
+    def files(self) -> list[Path]:
+        """Every file shipped as part of this specimen, sorted.
+
+        **The single definition of "the files in this specimen."** Both the content hash
+        and the S1/S2 safety scan consume this, so the set of bytes that gets hashed is by
+        construction the same set that gets inspected for escapes. They used to be two
+        definitions — the hash walked every file, while the safety scan globbed `*.py` —
+        which left `manifest.toml` shipped, hashed, and never scanned, despite carrying
+        author prose (`summary`, `notes`) where a hostname would plausibly land. A future
+        `payload.json` would have been invisible the same way (cross-cutting P95).
+        """
+        return sorted(
+            path
+            for path in self.path.rglob("*")
+            if path.is_file()
+            and path.name not in IGNORED_FILE_NAMES
+            and not any(part in IGNORED_DIR_NAMES for part in path.parts)
+        )
 
 
 @dataclass(frozen=True)

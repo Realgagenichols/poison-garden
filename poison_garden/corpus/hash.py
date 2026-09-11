@@ -20,9 +20,8 @@ from poison_garden.corpus.models import Corpus, Specimen
 HASH_ALGORITHM = "sha256"
 _DIGEST_PREFIX = "sha256:"
 
-# Files inside a specimen directory that are not part of its identity.
-_IGNORED_NAMES = frozenset({".DS_Store"})
-_IGNORED_DIRS = frozenset({"__pycache__"})
+from poison_garden.corpus.models import IGNORED_DIR_NAMES as _IGNORED_DIRS
+from poison_garden.corpus.models import IGNORED_FILE_NAMES as _IGNORED_NAMES
 
 
 def corpus_hash(corpus: Corpus) -> str:
@@ -104,18 +103,15 @@ def _feed(digest, chunk: bytes) -> None:
 
 
 def _specimen_files(specimen: Specimen) -> list[tuple[str, bytes]]:
-    """Every file in a specimen directory, sorted by relative POSIX path."""
-    out: list[tuple[str, bytes]] = []
-    for path in sorted(specimen.path.rglob("*")):
-        if path.is_dir():
-            continue
-        if path.name in _IGNORED_NAMES:
-            continue
-        if any(part in _IGNORED_DIRS for part in path.parts):
-            continue
-        rel = path.relative_to(specimen.path).as_posix()
-        out.append((rel, path.read_bytes()))
-    return out
+    """Every file in a specimen, as (relative POSIX path, bytes).
+
+    Delegates the file set to `Specimen.files()` so the bytes that get hashed are by
+    construction the same bytes the S1/S2 safety scan inspects (P95).
+    """
+    return [
+        (path.relative_to(specimen.path).as_posix(), path.read_bytes())
+        for path in specimen.files()
+    ]
 
 
 class CorpusMismatch(Exception):
