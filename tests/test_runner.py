@@ -670,3 +670,121 @@ def test_cmd_run_rejects_a_template_without_a_placeholder(tmp_path: Path, capsys
     assert code == 2
     assert "target" in capsys.readouterr().err
     assert not (tmp_path / "never.json").exists(), "no document on a refused template"
+
+
+# --- W5: a refusal is not a crash, and R7's summary must actually name the specimen ------
+
+
+def test_refusal_and_crash_and_usage_have_distinct_exit_codes(tmp_path: Path, capsys):
+    """P55: three outcomes cannot share two integers.
+
+    A refusal is poison-garden working exactly as R9 specifies. Reporting it as
+    EXIT_TOOL_ERROR told CI the tool crashed when it had done its job, and left "your
+    scanner errored every specimen" indistinguishable from "poison-garden fell over".
+    """
+    from poison_garden.cli import EXIT_REFUSED
+    from poison_garden.commands import cmd_run
+
+    # A scanner that is not executable -> every specimen errors -> nothing scorable.
+    dud = tmp_path / "not-executable.py"
+    dud.write_text("import sys; sys.exit(0)\n", encoding="utf-8")
+    refused = cmd_run(
+        corpus_root=str(SPECIMENS),
+        scanner=f"{dud} {PLACEHOLDER}",
+        out=str(tmp_path / "refused.json"),
+    )
+    err = capsys.readouterr().err
+    assert refused == EXIT_REFUSED
+    assert "refusing to emit" in err
+    assert not (tmp_path / "refused.json").exists()
+
+    usage = cmd_run(
+        corpus_root=str(SPECIMENS),
+        scanner="scanner --all",
+        out=str(tmp_path / "usage.json"),
+    )
+    capsys.readouterr()
+    assert usage == 2
+
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(1)")
+    ok = cmd_run(
+        corpus_root=str(SPECIMENS),
+        scanner=f"{sys.executable} {stub} {PLACEHOLDER}",
+        out=str(tmp_path / "ok.json"),
+        scanner_name="stub",
+    )
+    capsys.readouterr()
+    assert ok == 0
+    assert len({ok, usage, refused}) == 3, "the three outcomes must be distinguishable"
+
+
+def test_run_summary_names_errored_specimens(tmp_corpus, tmp_path, capsys):
+    """R7's scenario ends '...and the run's summary names it.' That half was untested.
+
+    Asserting the data structure is not asserting the summary: a reader of the console
+    output is the one R7 is protecting.
+    """
+    from poison_garden.commands import cmd_run
+
+    root = tmp_corpus(
+        [
+            {"id": "works", "declaration": ["injection"], "server_text": _echo_server()},
+            {"id": "works-twin", "twin_for": ["injection"], "server_text": _echo_server()},
+            {"id": "wont-start", "declaration": ["hygiene"],
+             "server_text": "import sys; sys.exit(1)"},
+            {"id": "hygiene-twin", "twin_for": ["hygiene"], "server_text": _echo_server()},
+        ]
+    )
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(1)")
+    code = cmd_run(
+        corpus_root=str(root),
+        scanner=f"{sys.executable} {stub} {PLACEHOLDER}",
+        out=str(tmp_path / "r.json"),
+        scanner_name="stub",
+    )
+    out = capsys.readouterr().out
+
+    assert code == 0
+    assert "wont-start" in out, "the summary does not name the errored specimen (R7)"
+    assert "ERRORED" in out
+
+
+# --- W6: the scanner template may carry a token; it must not reach a repr or an error ----
+
+
+def test_scanner_command_repr_does_not_carry_the_template():
+    command = parse_scanner("scan --api-key=sk-live-SUPERSECRET {target}")
+    assert "SUPERSECRET" not in repr(command)
+    assert "sk-live" not in repr(command)
+
+
+def test_template_error_does_not_echo_the_template():
+    """The message reaches stderr and any CI log."""
+    with pytest.raises(ScannerTemplateError) as exc:
+        parse_scanner("scan --api-key=sk-live-SUPERSECRET --all")
+    assert "SUPERSECRET" not in str(exc.value)
+    assert "scan" in str(exc.value), "naming the program is enough to locate the mistake"
+
+
+# --- W7: the completeness guard used to look only one way --------------------------------
+
+
+def test_scoring_refuses_a_result_for_a_specimen_not_in_the_corpus(corpus):
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    results.append(SpecimenResult("a-specimen-that-does-not-exist", Verdict.FLAGGED, 1))
+    with pytest.raises(ScoringRefused, match="not in this corpus"):
+        score_run(corpus, results)
+
+
+def test_scoring_refuses_duplicate_results(corpus):
+    """Building the id map is what hides this: the second result overwrites the first."""
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    results.append(SpecimenResult(corpus.specimens[0].id, Verdict.CLEAN, 0))
+    with pytest.raises(ScoringRefused, match="more than one result"):
+        score_run(corpus, results)

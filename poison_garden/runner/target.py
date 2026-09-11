@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import shlex
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from poison_garden.corpus.models import Specimen
@@ -36,10 +36,15 @@ class ScannerTemplateError(ValueError):
 
 @dataclass(frozen=True)
 class ScannerCommand:
-    """A parsed scanner template, ready to be specialised per specimen."""
+    """A parsed scanner template, ready to be specialised per specimen.
 
-    parts: tuple[str, ...]
-    raw: str
+    `parts` is `repr=False` and the original template string is NOT retained. The CLI's own
+    help text warns that a template may contain an API key, and `--debug` prints tracebacks;
+    a dataclass repr in a traceback frame would have published it. `sandbox.py` applies the
+    same treatment to the decoy canaries and exfiltrated payloads, for the same reason (S3).
+    """
+
+    parts: tuple[str, ...] = field(repr=False)
 
     @property
     def program(self) -> str:
@@ -83,13 +88,16 @@ def parse_scanner(template: str) -> ScannerCommand:
         raise ScannerTemplateError("scanner template parsed to no command")
 
     if not any(PLACEHOLDER in part for part in parts):
+        # The template is NOT echoed. It is the one user-supplied string the CLI's own
+        # help text warns may carry an API key, and this message reaches stderr and any
+        # CI log. Naming the program is enough to locate the mistake (S3, P11).
         raise ScannerTemplateError(
-            f"scanner template contains no {PLACEHOLDER} placeholder: {template!r}. "
+            f"scanner template for {parts[0]!r} contains no {PLACEHOLDER} placeholder. "
             "Without it the scanner would be run once per specimen against nothing, "
             "producing a full set of verdicts that describe no specimen at all."
         )
 
-    return ScannerCommand(parts=tuple(parts), raw=template)
+    return ScannerCommand(parts=tuple(parts))
 
 
 def target_argv(specimen: Specimen, python: str | None = None) -> list[str]:

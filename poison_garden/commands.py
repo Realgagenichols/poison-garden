@@ -5,9 +5,12 @@ Exit codes are load-bearing and distinguishable (cross-cutting P55):
     0  the corpus is fine
     1  the corpus is invalid — a real, reportable finding ABOUT THE CORPUS
     2  poison-garden itself broke
+    3  poison-garden refused to emit a result, correctly
 
 Conflating 1 and 2 would let a crash read as "your corpus has a problem", which is the
-milder result and the wrong one. R4's hash command has the same discipline.
+milder result and the wrong one. 3 is separate for the mirror reason: a refusal is the tool
+working as specified — R9 declining to publish recall with no false-positive control — and
+reporting it as 2 tells CI the tool crashed when it did its job.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ from pathlib import Path
 from poison_garden.cli import (
     EXIT_CORPUS_INVALID,
     EXIT_OK,
+    EXIT_REFUSED,
     EXIT_TOOL_ERROR,
     CorpusInvalid,
 )
@@ -96,8 +100,10 @@ def cmd_run(
             mapping=mapping,
         )
     except ScoringRefused as exc:
+        # Exit 3, not 2: the tool did exactly what R9 requires. CI must be able to tell
+        # this from a crash.
         print(f"refusing to emit a result: {exc}", file=sys.stderr)
-        return EXIT_TOOL_ERROR
+        return EXIT_REFUSED
 
     written = document.write(out)
 

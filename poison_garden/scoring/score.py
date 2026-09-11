@@ -65,13 +65,37 @@ class Scores:
 
 def score_run(corpus: Corpus, results: list[SpecimenResult]) -> Scores:
     """Turn per-specimen verdicts into per-class recall and a false-positive rate."""
-    by_id = {r.specimen_id: r for r in results}
+    # Duplicates are checked BEFORE building the map, because building it is what hides
+    # them: a second result for the same specimen silently overwrites the first, and the
+    # figures would then describe whichever one happened to come last.
+    seen: dict[str, int] = {}
+    for result in results:
+        seen[result.specimen_id] = seen.get(result.specimen_id, 0) + 1
+    duplicates = sorted(sid for sid, count in seen.items() if count > 1)
+    if duplicates:
+        raise ScoringRefused(
+            f"more than one result for specimen(s) {duplicates}. Which verdict counts is "
+            "undefined, so the figures would describe whichever arrived last."
+        )
 
-    missing = [s.id for s in corpus.specimens if s.id not in by_id]
+    by_id = {r.specimen_id: r for r in results}
+    corpus_ids = {s.id for s in corpus.specimens}
+
+    missing = sorted(corpus_ids - set(by_id))
     if missing:
         raise ScoringRefused(
-            f"no result for specimen(s) {sorted(missing)}. Scoring a partial run would "
+            f"no result for specimen(s) {missing}. Scoring a partial run would "
             "silently shrink the denominator of every figure below."
+        )
+
+    # The guard used to look only one way. A result naming a specimen the corpus does not
+    # contain means the run and the corpus disagree about what was measured — which is the
+    # same class of defect as a missing one, and equally fatal to a published figure.
+    extra = sorted(set(by_id) - corpus_ids)
+    if extra:
+        raise ScoringRefused(
+            f"result(s) for specimen(s) not in this corpus: {extra}. The run and the "
+            "corpus disagree about what was measured."
         )
 
     benign = corpus.benign

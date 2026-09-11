@@ -6,8 +6,12 @@ findings):
     0  the requested operation succeeded
     1  the corpus is invalid (a real, reportable finding about the corpus)
     2  poison-garden itself failed (bad usage, unexpected exception)
+    3  poison-garden REFUSED to emit a result, and was right to
 
-A crash must never read as the milder result.
+A crash must never read as the milder result — and a correct refusal must never read as a
+crash. 3 exists because conflating them made CI unable to tell "your scanner errored every
+specimen, so there is no measurement here" from "poison-garden fell over" (P55: two
+findings cannot share one integer).
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ import sys
 EXIT_OK = 0
 EXIT_CORPUS_INVALID = 1
 EXIT_TOOL_ERROR = 2
+EXIT_REFUSED = 3
 
 
 class CorpusInvalid(Exception):
