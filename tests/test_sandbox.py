@@ -318,3 +318,51 @@ def test_specimen_catalog_is_byte_identical_across_runs(tmp_path: Path):
         raise AssertionError(f"no tools/list response in specimen output: {stdout!r}")
 
     assert _tools_line(first) == _tools_line(second)
+
+
+# --- S3: no artifact may carry a canary, and a repr is an artifact ----------------------
+
+
+def test_sandbox_repr_does_not_leak_canaries(tmp_path: Path):
+    """REGRESSION: `--showlocals`, a log line, or an f-string would have printed them."""
+    with sandbox(tmp_path) as (box, _sink):
+        rendered = repr(box)
+        for canary in box.all_canary_values:
+            assert canary not in rendered, "Sandbox repr leaks a decoy canary (S3)"
+
+
+def test_egress_sink_repr_does_not_leak_payloads(tmp_path: Path):
+    with sandbox(tmp_path) as (_box, sink):
+        sink.connections.append(b"PG-EXFILTRATED-SECRET")
+        assert "PG-EXFILTRATED-SECRET" not in repr(sink), "sink repr leaks a payload (S3)"
+
+
+def test_sink_records_every_attempt_in_a_burst():
+    """REGRESSION (W1): 8 connections opened, 1 recorded — abandoned in the backlog.
+
+    For an M3 egress specimen that is a detection turned into a silent miss, which is the
+    failure R7 exists to prevent arriving through another door.
+    """
+    import socket as _socket
+
+    sink = EgressSink().start()
+    conns = []
+    try:
+        for _ in range(8):
+            conn = _socket.create_connection((sink.host, sink.port), timeout=2)
+            conn.sendall(b"x")
+            conns.append(conn)
+        sink.stop()
+        assert sink.accepted_count == 8, f"accepted only {sink.accepted_count} of 8"
+        assert len(sink.received()) == 8, f"recorded only {len(sink.received())} of 8"
+    finally:
+        for conn in conns:
+            conn.close()
+
+
+def test_attempt_count_refuses_a_clean_zero_after_a_fault():
+    """P55: 'nothing connected' and 'the sink broke' cannot share one integer."""
+    sink = EgressSink()
+    sink.faults.append("ECONNABORTED")
+    with pytest.raises(RuntimeError, match="unsafe to read"):
+        _ = sink.attempt_count

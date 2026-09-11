@@ -20,6 +20,7 @@ import os
 import secrets
 import socket
 import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -43,7 +44,10 @@ class Sandbox:
     """A prepared throwaway world for one specimen run."""
 
     home: Path
-    canaries: dict[str, str]
+    # repr=False: these are the run's decoy canary VALUES. Without this, any
+    # `--showlocals` traceback, log line, or f-string interpolating a Sandbox prints them.
+    # S3 forbids canary values reaching any artifact, and a repr is an artifact.
+    canaries: dict[str, str] = field(repr=False)
     egress_host: str
     egress_port: int
     probe_result: Path
@@ -109,11 +113,16 @@ class EgressSink:
     """
 
     host: str = "127.0.0.1"
+    backlog: int = 64
     _server: socket.socket | None = field(default=None, repr=False)
     _thread: threading.Thread | None = field(default=None, repr=False)
+    _handlers: list[threading.Thread] = field(default_factory=list, repr=False)
     _stop: threading.Event = field(default_factory=threading.Event, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
-    connections: list[bytes] = field(default_factory=list)
+    # repr=False: payloads are exfiltrated decoy credentials (S3).
+    connections: list[bytes] = field(default_factory=list, repr=False)
+    accepted: int = 0
+    faults: list[str] = field(default_factory=list)
 
     @property
     def port(self) -> int:
@@ -125,8 +134,8 @@ class EgressSink:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server.bind((self.host, 0))  # port 0 → OS picks a free one
-        server.listen(8)
-        server.settimeout(0.2)
+        server.listen(self.backlog)
+        server.settimeout(0.05)
         self._server = server
 
         self._thread = threading.Thread(target=self._serve, daemon=True)
@@ -134,35 +143,104 @@ class EgressSink:
         return self
 
     def _serve(self) -> None:
-        assert self._server is not None
+        """Accept loop.
+
+        Each connection is read on its OWN thread. Reading inline meant one slow or silent
+        client blocked the accept loop for the full recv timeout, so a burst of
+        connections was abandoned in the listen backlog at teardown: measured, 8 opened
+        and 1 recorded. For an egress specimen that is a detection turned into a silent
+        miss — precisely the failure R7 exists to prevent, arriving by another door.
+        """
         while not self._stop.is_set():
+            server = self._server
+            if server is None:
+                return
             try:
-                conn, _ = self._server.accept()
+                conn, _ = server.accept()
             except TimeoutError:
                 continue
-            except OSError:
-                break
-            with conn:
-                conn.settimeout(0.5)
-                try:
-                    payload = conn.recv(4096)
-                except OSError:
-                    payload = b""
-            with self._lock:
-                self.connections.append(payload)
+            except OSError as exc:
+                # A transient accept error (ECONNABORTED, EMFILE) used to `break`, killing
+                # the sink for good while every later attempt read as a clean zero. Record
+                # it and keep serving; `attempt_count` refuses to report a clean zero once
+                # a fault exists (P55 — two empties are two findings).
+                if self._stop.is_set():
+                    return
+                with self._lock:
+                    self.faults.append(type(exc).__name__)
+                continue
 
-    def stop(self) -> None:
+            with self._lock:
+                self.accepted += 1
+            handler = threading.Thread(target=self._read, args=(conn,), daemon=True)
+            with self._lock:
+                self._handlers.append(handler)
+            handler.start()
+
+    def _read(self, conn: socket.socket) -> None:
+        with conn:
+            conn.settimeout(0.5)
+            try:
+                payload = conn.recv(4096)
+            except OSError:
+                payload = b""
+        with self._lock:
+            self.connections.append(payload)
+
+    def drain(self, timeout: float = 2.0) -> None:
+        """Wait for accepted connections to finish being read.
+
+        Must run BEFORE `stop()` sets the stop flag, or in-flight reads are abandoned.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self._lock:
+                handlers = list(self._handlers)
+                settled = self.accepted == len(self.connections)
+            if settled and all(not h.is_alive() for h in handlers):
+                return
+            time.sleep(0.02)
+
+    def stop(self, drain_timeout: float = 2.0) -> None:
+        self.drain(drain_timeout)
         self._stop.set()
-        if self._thread is not None:
-            self._thread.join(timeout=2)
-        if self._server is not None:
-            self._server.close()
-            self._server = None
+
+        thread = self._thread
+        if thread is not None:
+            thread.join(timeout=2)
+
+        for handler in list(self._handlers):
+            handler.join(timeout=1)
+
+        # Only release the server once the accept loop has genuinely exited. Nulling it
+        # while that thread is live made it call `None.accept()` — an AttributeError, not
+        # an OSError, so it escaped the handler entirely inside a daemon thread.
+        if thread is None or not thread.is_alive():
+            if self._server is not None:
+                self._server.close()
+                self._server = None
 
     @property
     def attempt_count(self) -> int:
+        """Connections recorded.
+
+        Raises if the count is zero while a fault was recorded: "nothing connected" and
+        "the sink broke" are different findings and one integer cannot carry both.
+        """
         with self._lock:
-            return len(self.connections)
+            count = len(self.connections)
+            faults = list(self.faults)
+        if count == 0 and faults:
+            raise RuntimeError(
+                f"egress sink recorded no attempts but hit {len(faults)} accept fault(s) "
+                f"({sorted(set(faults))}) — a zero here is unsafe to read as 'no egress'"
+            )
+        return count
+
+    @property
+    def accepted_count(self) -> int:
+        with self._lock:
+            return self.accepted
 
     def received(self) -> tuple[bytes, ...]:
         with self._lock:

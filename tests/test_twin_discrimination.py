@@ -19,15 +19,49 @@ import json
 import re
 
 import pytest
-from helpers import SPECIMENS
+from helpers import SPECIMENS, handshake
 
 from poison_garden.corpus.loader import load_corpus
 from poison_garden.corpus.models import Class
 
+_SERVED_CACHE: dict[str, str] = {}
+
 
 def _advertised_text(specimen) -> str:
-    """Every string a specimen's source puts in front of a model, flattened."""
-    return specimen.entrypoint_path.read_text(encoding="utf-8")
+    """Every string the specimen actually SERVES, flattened. Not its source.
+
+    This read the source file, which was wrong in a way that made the whole module
+    vacuous. A source file contains a module docstring and imports, and the strawmen were
+    matching those: four of six twins tripped on prose in line 3 that no scanner ever
+    sees, and `\\bpath\\b` matched `from pathlib import Path` — boilerplate present in
+    every specimen. `test_every_twin_trips_at_least_one_strawman` therefore could not fail
+    for a scope-mismatch twin whatever that twin contained.
+
+    Same error as the N1 audit made: measuring the artifact that produces the payload
+    instead of the payload (cross-cutting P86 — ask what the instrument touched).
+    """
+    if specimen.id not in _SERVED_CACHE:
+        responses = handshake(specimen.entrypoint_path)
+        catalog = next(
+            (r.get("result", {}) for r in responses if r.get("id") == 2), {}
+        )
+        _SERVED_CACHE[specimen.id] = "\n".join(_strings_in(catalog))
+    return _SERVED_CACHE[specimen.id]
+
+
+def _strings_in(node: object) -> list[str]:
+    """Every string anywhere in the served catalog, including author-chosen keys."""
+    if isinstance(node, str):
+        return [node]
+    if isinstance(node, dict):
+        out: list[str] = []
+        for key, value in node.items():
+            out.append(key)
+            out.extend(_strings_in(value))
+        return out
+    if isinstance(node, list):
+        return [s for item in node for s in _strings_in(item)]
+    return []
 
 
 # --- strawman detectors: naive on purpose ------------------------------------------------
@@ -44,10 +78,12 @@ STRAWMEN: dict[Class, list[re.Pattern[str]]] = {
         re.compile(r"\bcall `?\w+`? first\b", re.I),
     ],
     Class.HIDDEN_CONTENT: [
-        re.compile(r"\\u[0-9a-fA-F]{4}"),
+        # Matched against SERVED text, so these are the real characters, not escapes.
+        re.compile("[\u200b\u200c\u200d\u2060\ufeff\u00ad]"),
+        re.compile("[\u202a-\u202e\u2066-\u2069]"),
         re.compile(r"[^\x00-\x7F]"),
-        re.compile(r"<!--"),
-        re.compile(r"\\x1b|\\033"),
+        re.compile("<!--"),
+        re.compile("\x1b"),
     ],
     Class.SENSITIVE_PARAMS: [
         re.compile(r"\bcontext\b", re.I),
@@ -182,8 +218,6 @@ def test_runtime_catalog_does_carry_the_hidden_characters(corpus):
     characters, or the hidden-content specimens advertise nothing hidden (P103 — compare
     the two representations, do not assume one implies the other).
     """
-    from helpers import handshake
-
     hidden = [s for s in corpus.malicious if Class.HIDDEN_CONTENT in s.classes]
     assert hidden, "no hidden-content specimens to check"
 
