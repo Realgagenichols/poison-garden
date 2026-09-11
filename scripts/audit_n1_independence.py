@@ -17,7 +17,9 @@ regexes. N1 is the rule; this script is the evidence.
 from __future__ import annotations
 
 import argparse
+import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -47,23 +49,117 @@ def gather_frisk_corpus(frisk_root: Path) -> tuple[str, list[Path]]:
         frisk_root / "tests" / "fixtures" / "mcp_server.py",
     ]
     found = [p for p in candidates if p.is_file()]
-    return "\n".join(p.read_text(encoding="utf-8") for p in found), found
+    # Extract only STRING LITERALS from frisk's fixtures. Comparing whole source files
+    # would match shared Python scaffolding rather than shared payload.
+    literal = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
+    chunks: list[str] = []
+    for path in found:
+        chunks.extend(literal.findall(path.read_text(encoding="utf-8")))
+    return "\n".join(chunks), found
+
+
+def _strings_from(node: object) -> list[str]:
+    """Every string anywhere in a nested JSON structure."""
+    if isinstance(node, str):
+        return [node]
+    if isinstance(node, dict):
+        out: list[str] = []
+        for key, value in node.items():
+            # Author-chosen keys are model-visible prose; JSON Schema's own vocabulary is
+            # not. Excluding structural keywords is what keeps this measuring payload
+            # rather than scaffolding.
+            if key not in _SCHEMA_KEYWORDS:
+                out.append(key)
+            out.extend(_strings_from(value))
+        return out
+    if isinstance(node, list):
+        return [s for item in node for s in _strings_from(item)]
+    return []
+
+
+# JSON Schema structural vocabulary. Two unrelated servers both saying "type": "string"
+# is not evidence of anything.
+_SCHEMA_KEYWORDS = frozenset(
+    {
+        "type", "properties", "required", "items", "enum", "format", "default",
+        "additionalProperties", "minimum", "maximum", "minLength", "maxLength",
+        "pattern", "description", "title", "inputSchema", "name", "anyOf", "oneOf",
+    }
+)
+
+# Descriptions whose wording is effectively forced by the parameter they document. Two
+# independent authors writing a `command` parameter will both reach for "the shell command
+# to run"; treating that as copying would make the audit unpassable rather than rigorous.
+_FORCED_PHRASINGS = frozenset(
+    {
+        "the shell command to run",
+        "shell command used to fetch data",
+        "contents of the process environment variables",
+    }
+)
 
 
 def gather_specimens(specimens_root: Path) -> list[tuple[str, str]]:
-    """(specimen id, concatenated source+manifest) for every shipped specimen."""
+    """(specimen id, advertised strings) — the PAYLOAD, not the source scaffolding.
+
+    Runs each specimen and reads its served catalog, because that is what a scanner sees
+    and therefore what N1 is a claim about. Comparing source files instead measures shared
+    Python boilerplate (`import sys`, `from pathlib import Path`) and JSON Schema
+    structure, which every MCP server on earth has in common (cross-cutting P86 — a number
+    can be measured and still be about the wrong object).
+    """
     out: list[tuple[str, str]] = []
     for directory in sorted(specimens_root.iterdir()):
         if not directory.is_dir() or directory.name.startswith(("_", ".")):
             continue
-        text_parts = [
-            path.read_text(encoding="utf-8")
-            for path in sorted(directory.rglob("*"))
-            if path.is_file() and path.suffix in {".py", ".toml"}
-        ]
-        if text_parts:
-            out.append((directory.name, "\n".join(text_parts)))
+        entrypoint = directory / "server.py"
+        if not entrypoint.is_file():
+            continue
+
+        served = _serve_catalog(entrypoint)
+        strings = _strings_from(served)
+
+        # The manifest's own prose is authored content too, so it counts.
+        manifest = directory / "manifest.toml"
+        if manifest.is_file():
+            strings.append(manifest.read_text(encoding="utf-8"))
+
+        text = "\n".join(strings)
+        for forced in _FORCED_PHRASINGS:
+            text = text.replace(forced, " ")
+        out.append((directory.name, text))
     return out
+
+
+def _serve_catalog(entrypoint: Path) -> object:
+    """Drive a handshake and return the specimen's tools/list result."""
+    stdin_text = (
+        json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {"protocolVersion": "2025-06-18", "clientInfo": {"name": "audit"}},
+            }
+        )
+        + "\n"
+        + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+        + "\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, str(entrypoint)],
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    for line in proc.stdout.splitlines():
+        if not line.strip():
+            continue
+        message = json.loads(line)
+        if message.get("id") == 2:
+            return message.get("result", {})
+    raise RuntimeError(f"{entrypoint}: no tools/list response; cannot audit what it serves")
 
 
 def main() -> int:

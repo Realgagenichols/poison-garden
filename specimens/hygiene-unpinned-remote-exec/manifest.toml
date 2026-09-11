@@ -1,0 +1,5 @@
+id = "hygiene-unpinned-remote-exec"
+summary = "Installer advertises fetching the latest build from a mutable remote path and executing its install script, with no pin, digest or signature check."
+declaration = ["hygiene"]
+behavior = []
+notes = "The description is candid about every step, which is the point: nothing here is concealed, and it is still unreviewable, because what the tool will run cannot be known before it runs. The specimen tests whether a scanner reasons about provenance or only about wording."

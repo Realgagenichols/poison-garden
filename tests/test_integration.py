@@ -7,21 +7,14 @@ corpus (cross-cutting P53 — green tests are not a used application).
 
 from __future__ import annotations
 
-import json
-import subprocess
-import sys
-from pathlib import Path
-
 import pytest
+from helpers import SPECIMENS, handshake, shipped_specimen_ids
 
 from poison_garden.cli import EXIT_OK, main
 from poison_garden.corpus.hash import corpus_hash
 from poison_garden.corpus.loader import load_corpus
 from poison_garden.corpus.models import Class
 from poison_garden.corpus.validate import validate_corpus
-
-REPO_ROOT = Path(__file__).resolve().parent.parent
-SPECIMENS = REPO_ROOT / "specimens"
 
 # The six declaration classes M1 is required to cover. Listed LITERALLY rather than derived
 # from the corpus under test: deriving them would rename the expectation along with the
@@ -84,53 +77,14 @@ def test_cli_validate_passes_on_the_real_corpus(capsys):
 # --- R1: every shipped specimen is a runnable MCP server --------------------------------
 
 
-def _handshake(script: Path, timeout: float = 20.0) -> list[dict]:
-    """Drive a real MCP handshake against a specimen and return its parsed responses."""
-    stdin_text = (
-        json.dumps(
-            {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2025-06-18",
-                    "clientInfo": {"name": "poison-garden-tests", "version": "0"},
-                    "capabilities": {},
-                },
-            }
-        )
-        + "\n"
-        + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
-        + "\n"
-    )
-    proc = subprocess.run(
-        [sys.executable, str(script)],
-        input=stdin_text,
-        capture_output=True,
-        text=True,
-        timeout=timeout,
-    )
-    return [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
-
-
-def _shipped_specimen_ids() -> list[str]:
-    if not SPECIMENS.is_dir():
-        return []
-    return sorted(
-        d.name
-        for d in SPECIMENS.iterdir()
-        if d.is_dir() and not d.name.startswith(("_", "."))
-    )
-
-
 @pytest.mark.slow
-@pytest.mark.parametrize("specimen_id", _shipped_specimen_ids())
+@pytest.mark.parametrize("specimen_id", shipped_specimen_ids())
 def test_specimen_answers_a_real_handshake(specimen_id: str):
     """R1 scenario: definitions come from a running process, not a static file."""
     specimen = load_corpus(SPECIMENS).by_id(specimen_id)
     assert specimen is not None
 
-    responses = _handshake(specimen.entrypoint_path)
+    responses = handshake(specimen.entrypoint_path)
     by_id = {r.get("id"): r for r in responses}
 
     assert 1 in by_id, f"{specimen_id}: no initialize response"
@@ -146,4 +100,52 @@ def test_specimen_answers_a_real_handshake(specimen_id: str):
 
 def test_there_are_specimens_to_handshake():
     """Vacuity guard: an empty parametrize list makes the test above vanish silently (P58)."""
-    assert _shipped_specimen_ids(), "no specimens found — the handshake test ran zero cases"
+    assert shipped_specimen_ids(), "no specimens found — the handshake test ran zero cases"
+
+
+# --- P76: expectations listed literally, never derived from the corpus under test --------
+
+# Every specimen shipped in corpus v0.1.0, written out. Deriving this list from the corpus
+# would rename the expectation along with the thing it checks, so deleting a specimen would
+# stay green — the exact failure frisk hit with a parametrize over its own constant.
+# Growth is fine (the assertion is a subset check); silent REMOVAL is the regression.
+EXPECTED_SPECIMENS = frozenset(
+    {
+        "hidden-ansi-escape-ci",
+        "hidden-bidi-override-export",
+        "hidden-content-twin-localization",
+        "hidden-markup-comment-inventory",
+        "hidden-zero-width-transit",
+        "hygiene-anonymous-server",
+        "hygiene-twin-pinned-installer",
+        "hygiene-unpinned-remote-exec",
+        "impersonation-builtin-reader",
+        "impersonation-twin-wiki-search",
+        "injection-invoice-remit-override",
+        "injection-meeting-preamble",
+        "injection-twin-invoice-import",
+        "scope-mismatch-timezone-helper",
+        "scope-mismatch-twin-runbook",
+        "sensitive-params-diagnostics-dump",
+        "sensitive-params-ticket-transcript",
+        "sensitive-params-twin-ticket-router",
+    }
+)
+
+
+def test_no_specimen_has_silently_disappeared():
+    present = set(shipped_specimen_ids())
+    missing = sorted(EXPECTED_SPECIMENS - present)
+    assert not missing, (
+        f"specimen(s) removed without updating EXPECTED_SPECIMENS: {missing}. "
+        "If the removal was deliberate, delete the entry here in the same commit."
+    )
+
+
+def test_every_class_has_at_least_one_twin_and_one_attacker(corpus):
+    """Counted per class rather than in aggregate — an aggregate hides a lopsided class."""
+    for klass in M1_DECLARATION_CLASSES:
+        attackers = [s for s in corpus.malicious if klass in s.classes]
+        twins = corpus.twins_for(klass)
+        assert attackers, f"{klass.value}: no malicious specimen"
+        assert twins, f"{klass.value}: no benign twin"

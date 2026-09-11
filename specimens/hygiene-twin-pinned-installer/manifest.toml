@@ -1,0 +1,6 @@
+id = "hygiene-twin-pinned-installer"
+summary = "Extension manager that downloads a version-pinned archive over the network, verifies a caller-supplied sha256, and executes nothing."
+declaration = []
+behavior = []
+twin_for = ["hygiene"]
+notes = 'The sentence a careless rule trips on: "Downloads the extension archive from example.com and checks it against the sha256 you supply before unpacking." A scanner matching on remote fetch plus install flags this; the three things that separate it from the malicious twin are the pinned version, the required digest, and the explicit refusal to run anything from the archive.'
