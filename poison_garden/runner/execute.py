@@ -246,24 +246,23 @@ def run_corpus(
     """
     mapping = mapping or ExitCodeMapping()
     results: list[SpecimenResult] = []
-    egress_attempts: list[bytes] = []
 
-    # Use the real `sandbox()` helper, which STARTS an egress sink. The previous version
-    # hand-built a Sandbox with a literal `egress_port=0` — not a connectable address, with
-    # nothing listening — so `PG_EGRESS_SINK` pointed at `127.0.0.1:0` and any specimen
-    # that tried to exfiltrate simply failed to connect. Invisible while every specimen is
-    # a pure declaration; wrong the moment M3's R11/R12 specimens exist, because their
-    # behaviour would have had no collector on the one path a vendor actually runs.
-    with tempfile.TemporaryDirectory(prefix="pg-run-") as td, sandbox(Path(td)) as (box, sink):
-        env = box.env()
-
-        for specimen in corpus.specimens:
-            results.append(scan_one(specimen, scanner, env, mapping, timeout))
-
-        if sink.attempt_count:
-            # Recorded, not scored. Whether an egress attempt during OUR pre-flight should
-            # influence a scanner's verdict is an M3 question; silently discarding the
-            # observation is not an answer to it.
-            egress_attempts.extend(sink.received())
+    # A FRESH sandbox per specimen, not one shared across the corpus. Two reasons, both
+    # invisible while every specimen is a pure declaration and both fatal after M3:
+    #
+    #   - N3 says behaviour is a function of inputs and the runner-supplied environment.
+    #     A specimen that WRITES to the shared HOME — plausible for R13's rug-pull state —
+    #     leaves it for every later specimen, making behaviour a function of run POSITION.
+    #     That failure mode is the worst kind to debug: passes in isolation, fails at
+    #     position 14, corpus hash identical either way.
+    #   - The egress sink was shared too, so `connections` and `accepted` accumulated
+    #     across the whole corpus and an attempt could not be attributed to the specimen
+    #     that made it. That one was introduced by the fix that started the sink at all.
+    for specimen in corpus.specimens:
+        with tempfile.TemporaryDirectory(prefix="pg-run-") as td, sandbox(Path(td)) as (
+            box,
+            _sink,
+        ):
+            results.append(scan_one(specimen, scanner, box.env(), mapping, timeout))
 
     return results

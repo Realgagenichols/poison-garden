@@ -878,3 +878,87 @@ def test_preflight_timeout_has_a_floor_and_a_cap(tmp_corpus, tmp_path):
         assert max(seen) <= 60.0, f"cap not applied: {seen}"
     finally:
         _execute.preflight = real
+
+
+# --- item 3: run-order independence (N3) -------------------------------------------------
+
+
+def test_a_specimen_that_writes_cannot_affect_a_later_one(tmp_corpus, tmp_path):
+    """N3: behaviour is a function of inputs and the runner-supplied environment.
+
+    One shared $HOME across the corpus made it a function of run POSITION too. A specimen
+    that writes — plausible for R13's rug-pull state — left the file for every later
+    specimen. The failure mode is the worst kind to debug: passes in isolation, fails at
+    position 14, corpus hash identical either way.
+    """
+    marker = "PG-LEAKED-STATE"
+    writer = (
+        textwrap.dedent(
+            f'''
+            import os, pathlib
+            pathlib.Path(os.environ["HOME"], "left-behind").write_text({marker!r})
+            '''
+        )
+        + _echo_server()
+    )
+    # Sorted by id, so `a-writer` runs before `b-reader`.
+    reader_report = tmp_path / "reader.txt"
+    reader = (
+        textwrap.dedent(
+            f'''
+            import os, pathlib
+            p = pathlib.Path(os.environ["HOME"], "left-behind")
+            open({str(reader_report)!r}, "w").write(p.read_text() if p.exists() else "CLEAN")
+            '''
+        )
+        + _echo_server()
+    )
+
+    root = tmp_corpus(
+        [
+            {"id": "a-writer", "declaration": ["injection"], "server_text": writer},
+            {"id": "b-reader", "declaration": ["hygiene"], "server_text": reader},
+            {"id": "c-twin", "twin_for": ["injection"], "server_text": _echo_server()},
+            {"id": "d-twin", "twin_for": ["hygiene"], "server_text": _echo_server()},
+        ]
+    )
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(0)")
+    run_corpus(load_corpus(root), parse_scanner(f"{sys.executable} {stub} {PLACEHOLDER}"))
+
+    assert reader_report.read_text(encoding="utf-8") == "CLEAN", (
+        "a later specimen saw state written by an earlier one — HOME is being shared"
+    )
+
+
+def test_each_specimen_gets_a_distinct_egress_sink(tmp_corpus, tmp_path):
+    """A shared sink accumulates across the corpus, so an attempt cannot be attributed.
+
+    Introduced by the fix that started the sink at all — worth a guard for that reason.
+    """
+    report = tmp_path / "ports.txt"
+    reporter = (
+        textwrap.dedent(
+            f'''
+            import os
+            with open({str(report)!r}, "a") as fh:
+                fh.write(os.environ.get("PG_EGRESS_SINK", "") + "\\n")
+            '''
+        )
+        + _echo_server()
+    )
+    root = tmp_corpus(
+        [
+            {"id": "one", "declaration": ["injection"], "server_text": reporter},
+            {"id": "two", "declaration": ["hygiene"], "server_text": reporter},
+            {"id": "twin-a", "twin_for": ["injection"], "server_text": _echo_server()},
+            {"id": "twin-b", "twin_for": ["hygiene"], "server_text": _echo_server()},
+        ]
+    )
+    stub = _stub_scanner(tmp_path, "import sys; sys.exit(0)")
+    run_corpus(load_corpus(root), parse_scanner(f"{sys.executable} {stub} {PLACEHOLDER}"))
+
+    ports = [line for line in report.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert len(ports) >= 2, f"expected a sink address per specimen, got {ports}"
+    assert len(set(ports)) == len(ports), (
+        f"specimens shared one sink, so egress cannot be attributed: {ports}"
+    )
