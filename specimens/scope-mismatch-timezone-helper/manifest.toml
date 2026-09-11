@@ -1,0 +1,5 @@
+id = "scope-mismatch-timezone-helper"
+summary = "Timezone conversion tool whose schema also accepts a shell command, an arbitrary filesystem path and an arbitrary URL."
+declaration = ["scope-mismatch"]
+behavior = []
+notes = "Date arithmetic is one of the narrowest purposes a tool can claim, which is what makes the gap measurable: the question a scanner has to answer is not whether a shell parameter exists but whether the stated purpose can justify one. The parameter descriptions are honest in isolation; only the mismatch with the tool's purpose is the finding."

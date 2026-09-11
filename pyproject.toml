@@ -4,19 +4,22 @@ version = "0.1.0"
 description = "A benchmark corpus of deliberately malicious MCP servers — run your own scanner against it and measure what you catch."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Gage Nichols", email = "gage@hiregage.com" }]
 keywords = ["mcp", "security", "benchmark", "tool-poisoning", "prompt-injection"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security",
 ]
-dependencies = [
-    "mcp>=1.27.2,<1.28",
-]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/Realgagenichols/poison-garden"
+Issues = "https://github.com/Realgagenichols/poison-garden/issues"
 
 [project.scripts]
 poison-garden = "poison_garden.cli:main"
@@ -25,10 +28,14 @@ poison-garden = "poison_garden.cli:main"
 dev = [
     "pytest>=8.0",
     "ruff>=0.4",
+    # Not imported by the package. Kept in dev so the M2 runner's client work and
+    # the SDK-compatibility checks have it available.
+    "mcp>=1.27.2,<1.28",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "--strict-markers --strict-config"
 pythonpath = ["."]
 markers = [
     "regression: tests for previously caught bugs",

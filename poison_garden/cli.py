@@ -32,6 +32,11 @@ def build_parser() -> argparse.ArgumentParser:
             "You run your own scanner against it."
         ),
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="include exception detail on an internal failure (may echo specimen content)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_validate = sub.add_parser(
@@ -61,14 +66,28 @@ def main(argv: list[str] | None = None) -> int:
 
             return cmd_hash(args.corpus)
     except CorpusInvalid as exc:
+        # Safe to print: CorpusInvalid is raised by our own code with messages built from
+        # paths and class names, never from specimen or manifest CONTENT.
         print(f"corpus invalid: {exc}", file=sys.stderr)
         return EXIT_CORPUS_INVALID
     except Exception as exc:  # noqa: BLE001 - top-level guard, reported not swallowed
-        print(f"poison-garden failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        # Deliberately does NOT interpolate the exception message. Exception reprs carry
+        # input values — TOMLDecodeError quotes the offending line, OSError carries the
+        # path — and a specimen or a seeded decoy could be in either. S3 is explicit:
+        # ids and class names only (cross-cutting P11). --debug opts into the detail.
+        print(f"poison-garden failed: {type(exc).__name__}", file=sys.stderr)
+        if getattr(args, "debug", False):
+            import traceback
+
+            traceback.print_exc()
+        else:
+            print("re-run with --debug for detail", file=sys.stderr)
         return EXIT_TOOL_ERROR
 
-    parser.error(f"unknown command: {args.command}")
-    return EXIT_TOOL_ERROR  # unreachable; parser.error exits
+    # Reachable if a subparser is added above and not wired into the dispatch here.
+    # Not dead code — it is the guard against exactly that omission.
+    parser.error(f"unhandled command: {args.command}")
+    return EXIT_TOOL_ERROR
 
 
 if __name__ == "__main__":

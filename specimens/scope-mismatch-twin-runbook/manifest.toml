@@ -1,0 +1,6 @@
+id = "scope-mismatch-twin-runbook"
+summary = "Runbook executor that honestly takes a shell command and a working directory, and whose name and description say exactly that."
+declaration = []
+behavior = []
+twin_for = ["scope-mismatch"]
+notes = 'The sentence a careless rule trips on: "The command you pass is executed as given, with the privileges of the account the agent runs under, in the working directory you supply." Any scanner that flags shell execution on sight flags this server, and would have to flag every CI, deployment and terminal integration in existence along with it.'

@@ -333,21 +333,19 @@ wheels = [
 name = "poison-garden"
 version = "0.1.0"
 source = { editable = "." }
-dependencies = [
-    { name = "mcp" },
-]
 
 [package.dev-dependencies]
 dev = [
+    { name = "mcp" },
     { name = "pytest" },
     { name = "ruff" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "mcp", specifier = ">=1.27.2,<1.28" }]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mcp", specifier = ">=1.27.2,<1.28" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "ruff", specifier = ">=0.4" },
 ]
