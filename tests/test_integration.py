@@ -258,3 +258,58 @@ def test_every_registered_miss_is_a_real_specimen(corpus):
     assert rows, "KNOWN-MISSES registers no specimens"
     missing = [r for r in rows if corpus.by_id(r) is None]
     assert not missing, f"register names specimens absent from the corpus: {missing}"
+
+
+# --- pre-flight is a SECOND invocation; anything impure happens twice, differently --------
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("specimen_id", shipped_specimen_ids())
+def test_specimen_serves_an_identical_catalog_on_two_invocations(specimen_id: str, corpus):
+    """N3, and the cheap guard against a whole family of M3 inversions.
+
+    poison-garden pre-flights each specimen and then the scanner runs it again — a second
+    invocation of the same program under a *different* environment, and only the second is
+    the measurement. So anything a specimen does that is not a pure function of its inputs
+    happens twice, differently, and the copy we can observe is the copy that does not count.
+
+    Asserting the two catalogs are byte-identical turns "seems harmless" into a
+    measurement. A specimen that legitimately varies — R13's rug-pull, R14's
+    scanner-aware — must declare that in its manifest, at which point this test reads the
+    declaration instead of demanding sameness. Until then, varying silently is a defect.
+
+    Compares the two runs to EACH OTHER, never to a stored literal (P103).
+    """
+    specimen = corpus.by_id(specimen_id)
+    assert specimen is not None
+
+    def catalog() -> str:
+        responses = handshake(specimen.entrypoint_path)
+        return json.dumps(
+            [r for r in responses if r.get("id") == 2], sort_keys=True
+        )
+
+    first, second = catalog(), catalog()
+    assert first == second, (
+        f"{specimen_id} served different catalogs on two invocations without declaring "
+        "that it varies. Our pre-flight is one invocation and the scanner's run is "
+        "another, so an undeclared variation means the scanner measures something we "
+        "never saw."
+    )
+
+
+def test_no_shipped_specimen_declares_a_behavior_class_yet():
+    """Vacuity guard with a deliberate expiry.
+
+    The test above demands sameness unconditionally, which is correct only while every
+    specimen is a pure declaration. The moment M3 lands R13/R14 this must grow a
+    manifest-aware branch — so this assertion fails loudly at that point rather than the
+    sameness check silently becoming wrong.
+    """
+    corpus = load_corpus(SPECIMENS)
+    behavioural = [s.id for s in corpus.specimens if s.manifest.behavior]
+    assert not behavioural, (
+        f"specimens now declare behaviour classes: {behavioural}. "
+        "test_specimen_serves_an_identical_catalog_on_two_invocations must now consult the "
+        "manifest instead of demanding sameness — see tasks/STATUS.md, item 4."
+    )
