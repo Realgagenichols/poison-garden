@@ -7,6 +7,10 @@ corpus (cross-cutting P53 — green tests are not a used application).
 
 from __future__ import annotations
 
+import json
+import subprocess
+import sys
+
 import pytest
 from helpers import SPECIMENS, handshake, shipped_specimen_ids
 
@@ -79,9 +83,9 @@ def test_cli_validate_passes_on_the_real_corpus(capsys):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("specimen_id", shipped_specimen_ids())
-def test_specimen_answers_a_real_handshake(specimen_id: str):
+def test_specimen_answers_a_real_handshake(specimen_id: str, corpus):
     """R1 scenario: definitions come from a running process, not a static file."""
-    specimen = load_corpus(SPECIMENS).by_id(specimen_id)
+    specimen = corpus.by_id(specimen_id)
     assert specimen is not None
 
     responses = handshake(specimen.entrypoint_path)
@@ -149,3 +153,62 @@ def test_every_class_has_at_least_one_twin_and_one_attacker(corpus):
         twins = corpus.twins_for(klass)
         assert attackers, f"{klass.value}: no malicious specimen"
         assert twins, f"{klass.value}: no benign twin"
+
+
+# --- protocol hygiene: a specimen that corrupts stdout is a silent corpus shrink ---------
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("specimen_id", shipped_specimen_ids())
+def test_specimen_writes_only_json_rpc_to_stdout(specimen_id: str, corpus):
+    """Every stdout line must be a JSON-RPC object — nothing else, ever.
+
+    A specimen that prints a banner, a warning, or a stray debug line corrupts the
+    JSON-RPC stream. The scanner under test then errors instead of reporting, R7
+    classifies the specimen as `error`, and it drops out of BOTH numerator and
+    denominator. The corpus silently shrinks and every score computed from it shifts,
+    with nothing anywhere saying so. That makes this a scoring-integrity check, not a
+    style one.
+    """
+    specimen = corpus.by_id(specimen_id)
+    proc = subprocess.run(
+        [sys.executable, str(specimen.entrypoint_path)],
+        input=json.dumps(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )
+        + "\n",
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+
+    for lineno, line in enumerate(proc.stdout.splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            message = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise AssertionError(
+                f"{specimen_id}: stdout line {lineno} is not JSON — it would corrupt the "
+                f"protocol stream and drop this specimen from scoring. Line: {line[:120]!r}"
+            ) from exc
+        assert message.get("jsonrpc") == "2.0", (
+            f"{specimen_id}: stdout line {lineno} is JSON but not a JSON-RPC message"
+        )
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("specimen_id", shipped_specimen_ids())
+def test_specimen_exits_cleanly_when_stdin_closes(specimen_id: str, corpus):
+    """A specimen that hangs after stdin closes stalls a whole benchmark run."""
+    specimen = corpus.by_id(specimen_id)
+    proc = subprocess.run(
+        [sys.executable, str(specimen.entrypoint_path)],
+        input="",
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    assert proc.returncode == 0, (
+        f"{specimen_id}: exited {proc.returncode} on empty stdin. stderr: {proc.stderr[:200]}"
+    )

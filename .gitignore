@@ -26,3 +26,11 @@ SPEC.md
 tasks/
 changes/
 docs/
+
+# Scan artifacts written into the repo root by third-party scanners run against the
+# corpus during development (e.g. `frisk scan` drops a frisk.lock in cwd). These are
+# not ours and must never be committed — a frisk baseline living inside the corpus that
+# measures frisk is exactly the wrong artifact to ship.
+frisk.lock
+*.lock
+!uv.lock
