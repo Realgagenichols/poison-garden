@@ -68,6 +68,7 @@ def cmd_run(
     scanner_name: str | None = None,
     flag_on: str = "nonzero",
     timeout: float = 120.0,
+    sarif: bool = False,
 ) -> int:
     """Run the user's scanner over the corpus and write a result document (R5-R10)."""
     from poison_garden.runner.execute import ExitCodeMapping, run_corpus
@@ -90,7 +91,7 @@ def cmd_run(
 
     # Captured BEFORE the run: this is the corpus the figures describe.
     hash_before = corpus_hash(corpus)
-    results = run_corpus(corpus, command, mapping=mapping, timeout=timeout)
+    results = run_corpus(corpus, command, mapping=mapping, timeout=timeout, sarif=sarif)
 
     try:
         document = build_document(

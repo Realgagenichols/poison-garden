@@ -131,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
                 scanner_name=args.scanner_name,
                 flag_on=args.flag_on,
                 timeout=args.timeout,
+                sarif=args.sarif,
             )
     except CorpusInvalid as exc:
         # CorpusInvalid messages are built from paths, key names and class names. One

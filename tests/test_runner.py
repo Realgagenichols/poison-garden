@@ -1118,3 +1118,40 @@ def test_schema_guard_catches_what_no_wordlist_can(corpus):
             f"{sneaky} would ship undetected — the schema guard is the only thing that "
             "catches a headline number wearing an innocent name"
         )
+
+
+def test_caught_and_missed_are_always_complementary(corpus):
+    """REGRESSION: they were computed independently and SARIF opened a hole between them.
+
+    A specimen flagged but not attributed to a class was in neither list, so
+    caught + missed != total — and the document's own consistency check would then have
+    rejected a document poison-garden itself produced.
+    """
+    from poison_garden.runner.sarif import parse_sarif
+
+    results = []
+    for index, specimen in enumerate(corpus.specimens):
+        if specimen.is_benign:
+            results.append(SpecimenResult(specimen.id, Verdict.CLEAN, 0))
+            continue
+        # Alternate: some flagged-and-attributed, some flagged-but-not, some clean.
+        if index % 3 == 0:
+            results.append(SpecimenResult(specimen.id, Verdict.CLEAN, 0))
+        elif index % 3 == 1:
+            results.append(SpecimenResult(specimen.id, Verdict.FLAGGED, 1))
+        else:
+            empty = parse_sarif(
+                json.dumps({"version": "2.1.0", "runs": [{"results": []}]})
+            )
+            results.append(
+                SpecimenResult(
+                    specimen.id, Verdict.FLAGGED, 1, attributed=empty.classes
+                )
+            )
+
+    scores = score_run(corpus, results)
+    for entry in scores.per_class:
+        assert entry.caught + len(entry.missed) == entry.total, (
+            f"{entry.klass.value}: caught({entry.caught}) + missed({len(entry.missed)}) "
+            f"!= total({entry.total})"
+        )

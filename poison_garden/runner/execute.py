@@ -21,8 +21,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from poison_garden.corpus.models import Corpus, Specimen
+from poison_garden.corpus.models import Class, Corpus, Specimen
 from poison_garden.runner.sandbox import sandbox
+from poison_garden.runner.sarif import SarifError, attribute, parse_sarif
 from poison_garden.runner.target import ScannerCommand, target_argv
 
 DEFAULT_TIMEOUT = 120.0
@@ -45,6 +46,11 @@ class SpecimenResult:
     # Why it errored, as a CATEGORY — never the scanner's output, which could contain a
     # decoy canary the specimen handed it (S3).
     error_reason: str | None = None
+    # R17: classes the scanner identified, when it emitted usable SARIF. None means SARIF
+    # was not requested or not usable — which is NOT a failure and never changes the
+    # verdict, because the baseline must stay available to a scanner that emits nothing.
+    attributed: frozenset[Class] | None = None
+    sarif_note: str | None = None
 
     @property
     def scored(self) -> bool:
@@ -194,6 +200,7 @@ def scan_one(
     env: dict[str, str],
     mapping: ExitCodeMapping,
     timeout: float = DEFAULT_TIMEOUT,
+    sarif: bool = False,
 ) -> SpecimenResult:
     """Point the scanner at one specimen and classify the outcome."""
     import time
@@ -242,11 +249,28 @@ def scan_one(
             error_reason=f"scanner-spawn-failed:{type(exc).__name__}",
         )
 
+    attributed: frozenset[Class] | None = None
+    sarif_note: str | None = None
+    if sarif:
+        # Enrichment only. A scanner whose SARIF we cannot parse keeps its exit-code
+        # verdict and gains a note — R17 says SARIF's absence never blocks a run, and a
+        # scanner must not score worse for emitting something we failed to read.
+        try:
+            findings = parse_sarif(proc.stdout)
+        except SarifError as exc:
+            sarif_note = f"unusable-sarif:{exc.args[0][:60]}"
+        else:
+            attributed = attribute(findings, specimen.classes)
+            if findings.unmapped_rules:
+                sarif_note = f"unmapped-rules:{len(findings.unmapped_rules)}"
+
     return SpecimenResult(
         specimen_id=specimen.id,
         verdict=mapping.verdict_for(proc.returncode),
         exit_code=proc.returncode,
         duration_s=time.monotonic() - started,
+        attributed=attributed,
+        sarif_note=sarif_note,
     )
 
 
@@ -255,6 +279,7 @@ def run_corpus(
     scanner: ScannerCommand,
     mapping: ExitCodeMapping | None = None,
     timeout: float = DEFAULT_TIMEOUT,
+    sarif: bool = False,
 ) -> list[SpecimenResult]:
     """Scan every specimen. One broken specimen never aborts the run (R7).
 
@@ -291,6 +316,8 @@ def run_corpus(
             box,
             _sink,
         ):
-            results.append(scan_one(specimen, scanner, box.env(), mapping, timeout))
+            results.append(
+                scan_one(specimen, scanner, box.env(), mapping, timeout, sarif=sarif)
+            )
 
     return results

@@ -49,6 +49,7 @@ ALLOWED_KEYS = frozenset(
         "corpus", "version", "hash", "specimen_count",
         "scanner", "name", "exit_code_mapping",
         "verdicts", "specimen", "verdict", "exit_code", "duration_s", "error_reason",
+        "attributed", "sarif_note",
         "per_class", "class", "caught", "total", "recall", "missed", "errored",
         "false_positives", "specimens", "benign_total", "rate",
         "errors",
@@ -197,6 +198,14 @@ def build_document(
                 "duration_s": round(r.duration_s, 2),
                 # A category, never the scanner's output.
                 "error_reason": r.error_reason,
+                # R17: present only when SARIF was requested AND usable. Absent means the
+                # verdict came from the exit code alone, which is the supported baseline.
+                "attributed": (
+                    sorted(str(c) for c in r.attributed)
+                    if r.attributed is not None
+                    else None
+                ),
+                "sarif_note": r.sarif_note,
             }
             for r in sorted(results, key=lambda r: r.specimen_id)
         ],

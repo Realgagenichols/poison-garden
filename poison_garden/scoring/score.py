@@ -115,15 +115,40 @@ def score_run(corpus: Corpus, results: list[SpecimenResult]) -> Scores:
         # Numerator and denominator come from ONE set expression, in one place, so they
         # cannot come to describe different populations (cross-cutting P40).
         scorable = [s for s in attackers if by_id[s.id].scored]
-        caught = [s for s in scorable if by_id[s.id].verdict is Verdict.FLAGGED]
+        # Per-class credit. With SARIF, a flag counts for a class only if the scanner
+        # actually identified THAT class — which matters for a dual-class specimen, where
+        # one verdict would otherwise credit both classes for seeing one. Without SARIF
+        # the verdict is the whole signal and a flag credits every class the specimen
+        # carries, which is the honest reading of a coarser instrument.
+        def _credited(specimen, _klass=klass) -> bool:
+            """Did the scanner get credit for THIS class on THIS specimen?
+
+            With SARIF, a flag counts for a class only if the scanner identified that
+            class — which matters for a dual-class specimen, where one verdict would
+            otherwise credit both classes for seeing one. Without SARIF the verdict is the
+            whole signal, and a flag credits every class the specimen carries: the honest
+            reading of a coarser instrument.
+            """
+            result = by_id[specimen.id]
+            if result.verdict is not Verdict.FLAGGED:
+                return False
+            return result.attributed is None or _klass in result.attributed
+
+        # `missed` is the complement of `caught` over the SAME set, by construction.
+        # Computing it independently as "verdict is CLEAN" left a hole the moment SARIF
+        # arrived: a specimen flagged but NOT attributed to this class was in neither list,
+        # so caught + missed != total and the document's own consistency check would have
+        # rejected it (P40 — numerator and denominator from one set expression, in one
+        # place).
+        caught = [s for s in scorable if _credited(s)]
+        missed = [s for s in scorable if not _credited(s)]
+
         per_class.append(
             ClassScore(
                 klass=klass,
                 caught=len(caught),
                 total=len(scorable),
-                missed=tuple(
-                    sorted(s.id for s in scorable if by_id[s.id].verdict is Verdict.CLEAN)
-                ),
+                missed=tuple(sorted(s.id for s in missed)),
                 errored=tuple(sorted(s.id for s in attackers if not by_id[s.id].scored)),
             )
         )
