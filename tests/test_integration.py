@@ -12,7 +12,14 @@ import subprocess
 import sys
 
 import pytest
-from helpers import REPO_ROOT, SPECIMENS, handshake, shipped_specimen_ids
+from helpers import (
+    REPO_ROOT,
+    SPECIMENS,
+    catalog_for_client,
+    enumerate_twice_in_one_session,
+    handshake,
+    shipped_specimen_ids,
+)
 
 from poison_garden.cli import EXIT_OK, main
 from poison_garden.corpus.hash import corpus_hash
@@ -115,6 +122,15 @@ def test_there_are_specimens_to_handshake():
 # Growth is fine (the assertion is a subset check); silent REMOVAL is the regression.
 EXPECTED_SPECIMENS = frozenset(
     {
+        # M3 behavioural families.
+        "behaviour-credential-reader",
+        "behaviour-twin-config-reader",
+        "behaviour-exfil-in-description",
+        "behaviour-twin-build-fingerprint",
+        "behaviour-namesake-rugpull",
+        "behaviour-twin-stable-namesakes",
+        "behaviour-scanner-aware",
+        "behaviour-twin-capability-negotiation",
         "hidden-ansi-escape-ci",
         "hidden-bidi-override-export",
         "hidden-content-twin-localization",
@@ -285,11 +301,17 @@ def test_specimen_serves_an_identical_catalog_on_two_invocations(specimen_id: st
 
     def catalog() -> str:
         responses = handshake(specimen.entrypoint_path)
-        return json.dumps(
-            [r for r in responses if r.get("id") == 2], sort_keys=True
-        )
+        return json.dumps([r for r in responses if r.get("id") == 2], sort_keys=True)
 
     first, second = catalog(), catalog()
+
+    # NOTE: this applies to EVERY specimen, including declared variers, and the first
+    # version of this test wrongly exempted them. `varies_by_invocation` does not mean
+    # non-deterministic — it means the catalog depends on an input (position within a
+    # session, or the client's declared identity) that two fresh processes given identical
+    # input do not vary. Same inputs, same output, always; N3 is not in tension with R13 or
+    # R14. The variation those classes implement is measured per class below, by varying
+    # the input that actually drives it.
     assert first == second, (
         f"{specimen_id} served different catalogs on two invocations without declaring "
         "that it varies. Our pre-flight is one invocation and the scanner's run is "
@@ -298,18 +320,43 @@ def test_specimen_serves_an_identical_catalog_on_two_invocations(specimen_id: st
     )
 
 
-def test_no_shipped_specimen_declares_a_behavior_class_yet():
-    """Vacuity guard with a deliberate expiry.
+def test_every_declared_varier_actually_varies(corpus):
+    """A declaration must be earned. Each varier is driven by the input its class names.
 
-    The test above demands sameness unconditionally, which is correct only while every
-    specimen is a pure declaration. The moment M3 lands R13/R14 this must grow a
-    manifest-aware branch — so this assertion fails loudly at that point rather than the
-    sameness check silently becoming wrong.
+    Replaced `test_no_shipped_specimen_declares_a_behavior_class_yet`, which existed to
+    fail loudly the moment M3 landed. It did, and this is what it demanded.
     """
-    corpus = load_corpus(SPECIMENS)
-    behavioural = [s.id for s in corpus.specimens if s.manifest.behavior]
-    assert not behavioural, (
-        f"specimens now declare behaviour classes: {behavioural}. "
-        "test_specimen_serves_an_identical_catalog_on_two_invocations must now consult the "
-        "manifest instead of demanding sameness — see tasks/STATUS.md, item 4."
-    )
+    variers = [s for s in corpus.specimens if s.manifest.varies_by_invocation]
+    assert variers, "no specimen declares varies_by_invocation — R13/R14 are unimplemented"
+
+    for specimen in variers:
+        assert specimen.manifest.behavior, (
+            f"{specimen.id} claims to vary but declares no behaviour class"
+        )
+        classes = specimen.classes
+        if Class.NAMESAKE_RUGPULL in classes:
+            catalogs = enumerate_twice_in_one_session(specimen.entrypoint_path)
+            assert catalogs[0] != catalogs[1], (
+                f"{specimen.id}: two enumerations in ONE session produced the same "
+                "catalog, so the rug-pull never happens"
+            )
+        elif Class.SCANNER_AWARE in classes:
+            scanner_view = catalog_for_client(
+                specimen.entrypoint_path, "mcp", capabilities={}
+            )
+            client_view = catalog_for_client(
+                specimen.entrypoint_path,
+                "claude-desktop",
+                capabilities={"roots": {"listChanged": True}, "sampling": {}},
+            )
+            assert scanner_view != client_view, (
+                f"{specimen.id}: a scanner and an ordinary client saw the same catalog, "
+                "so the evasion does not occur"
+            )
+
+
+def test_no_pure_declaration_specimen_claims_to_vary(corpus):
+    """Control: the exemption is available only to specimens whose class requires it."""
+    for specimen in corpus.specimens:
+        if specimen.manifest.varies_by_invocation:
+            assert specimen.manifest.behavior, f"{specimen.id} varies without a behaviour class"

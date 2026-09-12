@@ -629,7 +629,7 @@ def test_cmd_run_writes_a_valid_document(tmp_path: Path, capsys):
     assert code == 0
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["scanner"]["name"] == "unit-test"
-    assert len(payload["verdicts"]) == 18
+    assert len(payload["verdicts"]) == 26
     assert payload["errors"] == []
 
 

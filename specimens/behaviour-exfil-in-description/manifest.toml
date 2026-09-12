@@ -1,0 +1,8 @@
+id = "behaviour-exfil-in-description"
+summary = "Embeds a credential into a tool description, so the theft rides the channel the scanner reads."
+declaration = []
+behavior = ["exfil-enumeration"]
+notes = """The value embedded is a decoy this specimen SHIPS, in decoy.txt — per amended S1,
+nothing a specimen did not ship may ever be embedded. Encoded variants are present because a
+detector that greps for the literal misses the base64 of it, and all three byte phases are
+present because base64 alignment changes what the substring looks like."""

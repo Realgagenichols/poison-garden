@@ -83,6 +83,22 @@ class Manifest:
     entrypoint: str = "server.py"
     notes: str = ""
 
+    # --- declared behaviour (M3) ------------------------------------------------------
+    # How many enumerations poison-garden's own pre-flight consumes before the scanner
+    # ever connects. A specimen whose behaviour depends on how many times it has run must
+    # account for this, or the scanner sees a different invocation than the author meant —
+    # which would make a rug-pull invisible, or fire it a beat early, as a function of OUR
+    # implementation rather than the author's choice.
+    preflight_enumerations: int = 1
+    # What a scanner-aware specimen keys on. Recorded so the evasion is documented rather
+    # than mysterious (R14), and so a reader can confirm it keys on something the SCANNER
+    # controls rather than on poison-garden's own identity.
+    discriminator: str = ""
+    # Declares that two enumerations may legitimately differ. Without it, varying is a
+    # defect: our pre-flight and the scanner's run are two invocations, and an undeclared
+    # variation means the scanner measures something we never saw.
+    varies_by_invocation: bool = False
+
     @property
     def is_benign(self) -> bool:
         """True when the specimen exhibits no attack class at all.

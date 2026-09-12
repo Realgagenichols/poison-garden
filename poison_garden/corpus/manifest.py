@@ -17,7 +17,19 @@ from poison_garden.corpus.models import Class, Manifest, ManifestError
 MANIFEST_NAME = "manifest.toml"
 
 REQUIRED_KEYS = frozenset({"id", "summary"})
-OPTIONAL_KEYS = frozenset({"declaration", "behavior", "twin_for", "entrypoint", "notes"})
+OPTIONAL_KEYS = frozenset(
+    {
+        "declaration",
+        "behavior",
+        "twin_for",
+        "entrypoint",
+        "notes",
+        # M3: declared behaviour.
+        "preflight_enumerations",
+        "discriminator",
+        "varies_by_invocation",
+    }
+)
 KNOWN_KEYS = REQUIRED_KEYS | OPTIONAL_KEYS
 
 
@@ -53,11 +65,72 @@ def parse_manifest(path: Path) -> Manifest:
         twin_for=_class_list(path, data, "twin_for"),
         entrypoint=_str_field(path, data, "entrypoint", default="server.py"),
         notes=_str_field(path, data, "notes", default=""),
+        preflight_enumerations=_int_field(path, data, "preflight_enumerations", default=1),
+        discriminator=_str_field(path, data, "discriminator", default=""),
+        varies_by_invocation=_bool_field(path, data, "varies_by_invocation", default=False),
     )
 
     _check_twin_coherence(path, manifest)
     _check_entrypoint_containment(path, manifest)
+    _check_behaviour_fields(path, manifest)
     return manifest
+
+
+def _check_behaviour_fields(path: Path, manifest: Manifest) -> None:
+    """Declared-behaviour fields must belong to a specimen that actually behaves.
+
+    An M3 field on a pure declaration specimen is a typo or a copy-paste, not a hint. The
+    same reasoning as `twin_for` on a malicious specimen: a field that means nothing where
+    it sits makes every check that reads it vacuous for that specimen (P51).
+    """
+    if manifest.discriminator and Class.SCANNER_AWARE not in manifest.behavior:
+        raise ManifestError(
+            f"{path}: 'discriminator' is meaningful only for a scanner-aware specimen. "
+            f"This one declares behavior={sorted(c.value for c in manifest.behavior)}."
+        )
+
+    if Class.SCANNER_AWARE in manifest.behavior and not manifest.discriminator.strip():
+        raise ManifestError(
+            f"{path}: a scanner-aware specimen SHALL record the discriminator it keys on "
+            "(R14), so the evasion is documented rather than mysterious."
+        )
+
+    if manifest.varies_by_invocation and not manifest.behavior:
+        raise ManifestError(
+            f"{path}: 'varies_by_invocation' on a specimen with no behaviour class. A pure "
+            "declaration that varies between enumerations is a defect, not a feature — "
+            "pre-flight and the scan are two invocations, and an undeclared variation "
+            "means the scanner measures something poison-garden never saw."
+        )
+
+    if manifest.preflight_enumerations < 0:
+        raise ManifestError(
+            f"{path}: 'preflight_enumerations' must not be negative, got "
+            f"{manifest.preflight_enumerations}"
+        )
+
+
+def _int_field(path: Path, data: dict[str, Any], key: str, default: int) -> int:
+    if key not in data:
+        return default
+    value = data[key]
+    # bool is a subclass of int; accepting it here would silently read `true` as 1.
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ManifestError(
+            f"{path}: key '{key}' must be an integer, got {type(value).__name__}"
+        )
+    return value
+
+
+def _bool_field(path: Path, data: dict[str, Any], key: str, default: bool) -> bool:
+    if key not in data:
+        return default
+    value = data[key]
+    if not isinstance(value, bool):
+        raise ManifestError(
+            f"{path}: key '{key}' must be true or false, got {type(value).__name__}"
+        )
+    return value
 
 
 def _check_entrypoint_containment(path: Path, manifest: Manifest) -> None:

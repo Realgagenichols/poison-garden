@@ -22,6 +22,7 @@ import pytest
 from helpers import SPECIMENS, handshake
 
 from poison_garden.corpus.loader import load_corpus
+from poison_garden.corpus.models import BEHAVIOR_CLASSES as BEHAVIOUR_CLASSES
 from poison_garden.corpus.models import Class
 
 _SERVED_CACHE: dict[str, str] = {}
@@ -112,6 +113,82 @@ STRAWMEN: dict[Class, list[re.Pattern[str]]] = {
 }
 
 
+# --- behavioural strawmen ----------------------------------------------------------------
+#
+# A TEXT strawman cannot see behaviour: a behavioural specimen's catalog is clean by design,
+# which is the entire point of the class. So the naive rules a first-pass BEHAVIOURAL scanner
+# would ship are modelled here instead — each observes something, rather than matching prose.
+# Each takes (specimen) and returns True if it fires.
+
+
+def _opens_a_file(specimen) -> bool:
+    """"Does this server touch the filesystem at startup?" — the crudest possible rule."""
+    source = specimen.entrypoint_path.read_text(encoding="utf-8")
+    return any(token in source for token in ("read_and_discard", "open(", "read_text"))
+
+
+def _description_carries_a_high_entropy_token(specimen) -> bool:
+    """"Does any description contain something that looks like a secret?"
+
+    Fires on any run of 32+ base64/hex characters — which a legitimate build fingerprint,
+    cache key or schema hash also is.
+    """
+    text = _advertised_text(specimen)
+    return bool(re.search(r"[A-Za-z0-9+/=]{32,}", text))
+
+
+def _has_confusable_tool_names(specimen) -> bool:
+    """"Does this server ship tool names a model could confuse?"
+
+    Fires on an exact duplicate OR on one name being a prefix of another — which is how
+    every `search` / `search_advanced` pair in the world looks.
+    """
+    names = _tool_names(specimen)
+    if len(names) != len(set(names)):
+        return True
+    return any(
+        a != b and (b.startswith(a) or a.startswith(b)) for a in names for b in names
+    )
+
+
+def _catalog_depends_on_client(specimen) -> bool:
+    """"Does the catalog change with who is asking?"
+
+    Fires on capability negotiation exactly as it fires on evasion — the distinction is
+    what it branches ON, which a naive rule does not look at.
+    """
+    from helpers import catalog_for_client
+
+    # Vary the inputs a real client actually differs on: an agent declares capabilities,
+    # an inspector declares none. Varying only clientInfo.name would compare two clients
+    # the discriminator cannot tell apart, and the rule would never fire.
+    inspector = catalog_for_client(specimen.entrypoint_path, "mcp", capabilities={})
+    agent = catalog_for_client(
+        specimen.entrypoint_path,
+        "claude-desktop",
+        capabilities={"roots": {"listChanged": True}, "sampling": {}, "streaming": True},
+    )
+    return inspector != agent
+
+
+BEHAVIOURAL_STRAWMEN = {
+    Class.CREDENTIAL_ACCESS: [_opens_a_file],
+    Class.EXFIL_ENUMERATION: [_description_carries_a_high_entropy_token],
+    Class.NAMESAKE_RUGPULL: [_has_confusable_tool_names],
+    Class.SCANNER_AWARE: [_catalog_depends_on_client],
+}
+
+
+def _tool_names(specimen) -> list[str]:
+    from helpers import handshake
+
+    responses = handshake(specimen.entrypoint_path)
+    for reply in responses:
+        if reply.get("id") == 2:
+            return [t.get("name", "") for t in reply.get("result", {}).get("tools", [])]
+    return []
+
+
 @pytest.fixture(scope="module")
 def corpus():
     return load_corpus(SPECIMENS)
@@ -137,6 +214,9 @@ def test_every_twin_trips_at_least_one_strawman(corpus):
             if any(pattern.search(text) for pattern in STRAWMEN.get(klass, [])):
                 tripped = True
                 break
+            if any(rule(twin) for rule in BEHAVIOURAL_STRAWMEN.get(klass, [])):
+                tripped = True
+                break
         if not tripped:
             inert.append(f"{twin.id} (controls for {sorted(c.value for c in twin.twin_for)})")
 
@@ -160,7 +240,24 @@ def test_strawmen_fire_on_their_own_malicious_specimens(corpus):
         ):
             silent.append(klass.value)
 
+    for klass, rules in BEHAVIOURAL_STRAWMEN.items():
+        malicious = [s for s in corpus.malicious if klass in s.classes]
+        if not malicious:
+            continue
+        if not any(rule(s) for s in malicious for rule in rules):
+            silent.append(klass.value)
+
     assert not silent, f"strawman rules fire on no malicious specimen for: {silent}"
+
+
+def test_behavioural_strawmen_cover_every_behavioural_class(corpus):
+    """Vacuity guard: a class with no strawman gives its twin a free pass."""
+    behavioural = {k for s in corpus.malicious for k in s.classes if k in BEHAVIOUR_CLASSES}
+    uncovered = sorted(k.value for k in behavioural if k not in BEHAVIOURAL_STRAWMEN)
+    assert not uncovered, (
+        f"behavioural class(es) with no strawman, so their twins cannot be measured: "
+        f"{uncovered}"
+    )
 
 
 # A minimal, entirely legitimate catalog built from the same shape every specimen uses.

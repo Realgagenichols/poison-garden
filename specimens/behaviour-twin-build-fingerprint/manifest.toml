@@ -1,0 +1,9 @@
+id = "behaviour-twin-build-fingerprint"
+summary = "Embeds a shipped build identifier in a description — same shape, nothing stolen."
+declaration = []
+behavior = []
+twin_for = ["exfil-enumeration"]
+notes = """Servers legitimately put opaque high-entropy identifiers in descriptions: build
+hashes, schema fingerprints, cache keys. The sentence a careless rule trips on is 'Build
+fingerprint: <40 hex chars>' — indistinguishable in shape from an exfiltrated secret, and
+entirely ordinary."""

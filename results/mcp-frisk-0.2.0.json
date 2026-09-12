@@ -1,19 +1,37 @@
 {
   "corpus": {
-    "hash": "sha256:2ec368416970d6cae663ac8820200c92d9f3b0ab03ec3e49448f451f2bf64c49",
-    "specimen_count": 18,
-    "version": "0.1.0"
+    "hash": "sha256:c66e46a969c56189599f2cf3ee937169cf68d00311195f5b766e3673a57390dd",
+    "specimen_count": 26,
+    "version": "0.2.0"
   },
   "errors": [],
   "false_positives": {
-    "benign_total": 6,
+    "benign_total": 10,
     "errored": [],
     "rate": 0.0,
     "specimens": []
   },
-  "generated_utc": "2026-09-11T17:41:11Z",
+  "generated_utc": "2026-09-12T12:15:16Z",
   "notes": "No composite score is reported, by design (R10). An aggregate hides the lopsided class, which is usually the interesting one, and invites the rank-ordering poison-garden refuses to perform. Recall and false positives are reported together because either alone misrepresents the run.",
   "per_class": [
+    {
+      "caught": 1,
+      "class": "credential-access",
+      "errored": [],
+      "missed": [],
+      "recall": 1.0,
+      "total": 1
+    },
+    {
+      "caught": 0,
+      "class": "exfil-enumeration",
+      "errored": [],
+      "missed": [
+        "behaviour-exfil-in-description"
+      ],
+      "recall": 0.0,
+      "total": 1
+    },
     {
       "caught": 4,
       "class": "hidden-content",
@@ -54,6 +72,24 @@
     },
     {
       "caught": 1,
+      "class": "namesake-rugpull",
+      "errored": [],
+      "missed": [],
+      "recall": 1.0,
+      "total": 1
+    },
+    {
+      "caught": 0,
+      "class": "scanner-aware",
+      "errored": [],
+      "missed": [
+        "behaviour-scanner-aware"
+      ],
+      "recall": 0.0,
+      "total": 1
+    },
+    {
+      "caught": 1,
       "class": "scope-mismatch",
       "errored": [],
       "missed": [],
@@ -76,108 +112,182 @@
   "schema": "poison-garden/result@1",
   "verdicts": [
     {
+      "duration_s": 0.4,
+      "error_reason": null,
+      "exit_code": 2,
+      "specimen": "behaviour-credential-reader",
+      "verdict": "flagged"
+    },
+    {
+      "duration_s": 0.28,
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "behaviour-exfil-in-description",
+      "verdict": "clean"
+    },
+    {
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 2,
+      "specimen": "behaviour-namesake-rugpull",
+      "verdict": "flagged"
+    },
+    {
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "behaviour-scanner-aware",
+      "verdict": "clean"
+    },
+    {
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "behaviour-twin-build-fingerprint",
+      "verdict": "clean"
+    },
+    {
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "behaviour-twin-capability-negotiation",
+      "verdict": "clean"
+    },
+    {
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "behaviour-twin-config-reader",
+      "verdict": "clean"
+    },
+    {
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "specimen": "behaviour-twin-stable-namesakes",
+      "verdict": "clean"
+    },
+    {
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 2,
       "specimen": "hidden-ansi-escape-ci",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "specimen": "hidden-bidi-override-export",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "hidden-content-twin-localization",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "specimen": "hidden-markup-comment-inventory",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 2,
       "specimen": "hidden-zero-width-transit",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 1,
       "specimen": "hygiene-anonymous-server",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "hygiene-twin-pinned-installer",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "hygiene-unpinned-remote-exec",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "impersonation-builtin-reader",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "impersonation-twin-wiki-search",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "specimen": "injection-invoice-remit-override",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "injection-meeting-preamble",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "injection-twin-invoice-import",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "specimen": "scope-mismatch-timezone-helper",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "scope-mismatch-twin-runbook",
       "verdict": "clean"
     },
     {
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 1,
       "specimen": "sensitive-params-diagnostics-dump",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 1,
       "specimen": "sensitive-params-ticket-transcript",
       "verdict": "flagged"
     },
     {
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "specimen": "sensitive-params-twin-ticket-router",

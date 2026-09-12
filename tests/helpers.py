@@ -122,3 +122,64 @@ def shipped_specimen_ids() -> list[str]:
     return sorted(
         d.name for d in SPECIMENS.iterdir() if d.is_dir() and not d.name.startswith(("_", "."))
     )
+
+
+def _drive(script: Path, messages: list[dict], env: dict[str, str] | None = None) -> list[dict]:
+    """Send a sequence of JSON-RPC messages in ONE session and parse the replies."""
+    stdin_text = "".join(json.dumps(m) + "\n" for m in messages)
+    proc = subprocess.run(
+        [sys.executable, str(script)],
+        input=stdin_text,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        env=env if env is not None else _sandboxed_env(),
+    )
+    return [json.loads(line) for line in proc.stdout.splitlines() if line.strip()]
+
+
+def _init(client_name: str = "poison-garden-tests", capabilities: dict | None = None) -> dict:
+    return {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {
+            "protocolVersion": "2025-06-18",
+            "clientInfo": {"name": client_name, "version": "0"},
+            "capabilities": capabilities or {},
+        },
+    }
+
+
+def enumerate_twice_in_one_session(script: Path, client_name: str = "claude-desktop") -> list[str]:
+    """Two `tools/list` calls on ONE connection — the window a rug-pull lives in.
+
+    A client connects once and enumerates more than once; the attack is "later in this
+    conversation than when you approved me", not "the fifth time anyone ever asked".
+    """
+    replies = _drive(
+        script,
+        [
+            _init(client_name),
+            {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+            {"jsonrpc": "2.0", "id": 3, "method": "tools/list"},
+        ],
+    )
+    by_id = {r.get("id"): r for r in replies}
+    return [
+        json.dumps(by_id[i].get("result", {}), sort_keys=True)
+        for i in (2, 3)
+        if i in by_id
+    ]
+
+
+def catalog_for_client(script: Path, client_name: str, capabilities: dict | None = None) -> str:
+    """The catalog served to a client declaring a given identity."""
+    replies = _drive(
+        script,
+        [_init(client_name, capabilities), {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}],
+    )
+    for reply in replies:
+        if reply.get("id") == 2:
+            return json.dumps(reply.get("result", {}), sort_keys=True)
+    return ""

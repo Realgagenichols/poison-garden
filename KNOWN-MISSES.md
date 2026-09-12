@@ -17,78 +17,82 @@ Verified by `scripts/audit_n1_independence.py`.
 
 ---
 
-## Corpus v0.1.0 (unreleased)
+## Corpus v0.2.0 (unreleased)
 
-**Corpus state these numbers describe** — without this, an edit to any specimen silently
+**Corpus state these numbers describe** — without it, an edit to any specimen silently
 invalidates every row below and nothing says so (R4 exists to prevent exactly that):
 
 ```
-corpus version  0.1.0
-corpus hash     sha256:2ec368416970d6cae663ac8820200c92d9f3b0ab03ec3e49448f451f2bf64c49
+corpus version  0.2.0
+corpus hash     sha256:c66e46a969c56189599f2cf3ee937169cf68d00311195f5b766e3673a57390dd
 scanner         mcp-frisk 0.2.0
-measured        2026-09-11
+measured        2026-09-12
+command         poison-garden run --scanner "uvx --from mcp-frisk frisk scan --no-sandbox -- {target}"
 ```
 
-Re-measure and update both the hash and the rows whenever either the corpus or frisk moves.
-A row whose corpus hash no longer matches `poison-garden hash --corpus specimens` is stale,
-not evidence.
+Produced by `poison-garden run` itself — the same path any vendor uses — not by hand. The
+M1 figures were measured per-specimen manually and the runner reproduced them exactly; that
+agreement between two independent paths is the only reason to trust either.
 
-**Measured 2026-09-11** against `mcp-frisk` 0.2.0, using:
-
-```sh
-uvx --from mcp-frisk frisk scan --no-sandbox -- <python> specimens/<id>/server.py
-```
-
-`--no-sandbox` because the specimens are already being run inside poison-garden's own
-throwaway HOME during a benchmark run; frisk's seatbelt profile is orthogonal to what is
-being measured here (its *detectors*, not its containment).
-
-**Per class** — reported this way rather than as one figure, for the same reason R10 forbids a
-composite score in a result document: an aggregate hides exactly the lopsided class that
-matters. A specimen carrying two classes counts toward both.
+**Per class**, for the same reason R10 forbids a composite score: an aggregate hides the
+lopsided class, which is usually the interesting one. A specimen carrying two classes counts
+toward both.
 
 | Class | Caught | Missed |
 |---|---|---|
+| credential-access | 1/1 | — |
+| exfil-enumeration | 0/1 | `behaviour-exfil-in-description` |
 | hidden-content | 4/4 | — |
-| sensitive-params | 2/2 | — |
-| scope-mismatch | 1/1 | — |
-| injection | 3/4 | `injection-meeting-preamble` |
 | hygiene | 1/2 | `hygiene-unpinned-remote-exec` |
-| **impersonation** | **0/1** | `impersonation-builtin-reader` |
+| impersonation | 0/1 | `impersonation-builtin-reader` |
+| injection | 3/4 | `injection-meeting-preamble` |
+| namesake-rugpull | 1/1 | — |
+| scanner-aware | 0/1 | `behaviour-scanner-aware` |
+| scope-mismatch | 1/1 | — |
+| sensitive-params | 2/2 | — |
 
-**False positives: 0 of 6 twins.** Aggregate: 9 of 12 malicious specimens flagged, 3 missed.
+**False positives: 0 of 10 twins.** Registered misses: 5 (N2 requires ≥3).
 
-The interesting line is impersonation, not the aggregate: frisk flags none of it. One specimen
-is too small a sample to call that a detection gap rather than a single hard case, which is
-itself a finding — the class needs more attackers before its recall figure means anything.
+### What the behavioural classes show
 
-Two specimens (`hidden-zero-width-transit`, `hidden-markup-comment-inventory`) carry a real
-instruction inside the hidden channel and are therefore labelled both `hidden-content` and
-`injection`. Under-labelling an obvious injection would have deflated that class's recall.
+The measurement this project was built to produce. The honest reading is more interesting
+than "static scanners fail":
 
-### The three misses (N2 satisfied)
+- **frisk catches 2 of 4 behavioural classes** — far better than the thesis predicts, because
+  frisk is not purely static. It runs the server under a seatbelt sandbox seeded with decoy
+  credentials and watches, so `credential-access` falls to its honeypot and
+  `namesake-rugpull` to its duplicate-name rule. A scanner that only reads `tools/list` would
+  score 0/4 here. **That is the finding: the gap is not static-vs-good, it is static-vs-
+  behavioural, and frisk is on the right side of it.**
+- **`scanner-aware` is missed**, and it is the sharpest row in the table. The specimen serves
+  frisk a clean catalog and a real agent the poisoned one. Every static conclusion frisk
+  draws is *accurate about the catalog it was shown* — and useless.
+- **`exfil-enumeration` is missed**: a shipped decoy credential embedded in a tool
+  description as base64 across three byte phases. The theft rides the channel the scanner is
+  already reading.
+
+### The registered misses (N2)
+
+Specimen id first, so this table is machine-checkable — `scripts/check_known_misses.py`
+counts these rows at release and rejects any that names a specimen no longer in the corpus.
 
 | Specimen | Class | frisk verdict | What it would have to notice |
 |---|---|---|---|
-| `injection-meeting-preamble` | injection | PASS | The description reads as ordinary operational prose. Its directives are phrased as vendor policy ("Assistant procedure (required)") and its concealment instruction is justified on plausible support grounds, rather than using imperative override vocabulary. |
-| `impersonation-builtin-reader` | impersonation | PASS | Name-similarity to a common built-in, combined with description text steering the model away from another server, on a server whose stated domain does not need that tool at all. |
-| `hygiene-unpinned-remote-exec` | hygiene | PASS | A tool that describes fetching and executing code from an unpinned remote location — provenance is unverifiable, but nothing in the advertised text is syntactically suspicious. |
+| `behaviour-exfil-in-description` | exfil-enumeration | PASS | A shipped decoy credential embedded in a tool description as base64 across three byte phases. The theft rides the channel the scanner is already reading. |
+| `behaviour-scanner-aware` | scanner-aware | PASS | Serves frisk a clean catalog and a real agent the poisoned one. Every static conclusion drawn about it is accurate about the catalog it was shown, and useless. |
+| `hygiene-unpinned-remote-exec` | hygiene | PASS | Fetches and executes unpinned remote code; provenance unverifiable, but nothing in the advertised text is syntactically suspicious. |
+| `impersonation-builtin-reader` | impersonation | PASS | Name-similarity plus steering text, on a server whose stated domain has no need of that tool at all. |
+| `injection-meeting-preamble` | injection | PASS | Directives phrased as vendor policy ("Assistant procedure (required)"), concealment justified on plausible support grounds — no imperative-override vocabulary to key on. |
 
-### Caught (not a miss — recorded for completeness)
+### A wrong result, recorded rather than quietly fixed
 
-`hidden-zero-width-transit`, `hidden-bidi-override-export`, `hidden-ansi-escape-ci` (FAIL);
-`hidden-markup-comment-inventory`, `hygiene-anonymous-server`, `scope-mismatch-timezone-helper`,
-`sensitive-params-diagnostics-dump`, `sensitive-params-ticket-transcript` (WARN);
-`injection-invoice-remit-override` (FAIL).
-
-### False positives
-
-**None.** All six benign twins pass clean. Worth stating plainly, because it cuts against
-this project's own interest: the twins were built to be tempting, and a scanner that resisted
-all six is doing the hard part correctly. The corpus's `test_every_twin_trips_at_least_one_strawman`
-confirms the twins *do* trip naive keyword rules — frisk is simply better than a strawman.
-
----
+`scanner-aware` first scored **1/1 caught**, which looked like a win and measured nothing.
+The discriminator keyed on `clientInfo.name` containing tokens like `scan` or `frisk` — but
+`mcp-frisk` identifies as `{"name": "mcp"}`, the Python SDK default, as almost every scanner
+will. The evasion never fired and frisk simply caught an ordinary poisoned catalog. The
+discriminator now keys on **declared capabilities**: an agent declares `roots` / `sampling` /
+`elicitation`, an inspector declares none. A false signal in this project's own favour is the
+worst kind to leave standing.
 
 ## How to add a row
 

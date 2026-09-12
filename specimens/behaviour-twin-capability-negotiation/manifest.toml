@@ -1,0 +1,10 @@
+id = "behaviour-twin-capability-negotiation"
+summary = "Varies its catalog by declared client capabilities — legitimately, and says so."
+declaration = []
+behavior = []
+twin_for = ["scanner-aware"]
+notes = """Varying a catalog by client is normal and specified: a server that offers a
+streaming tool only to clients declaring streaming support is doing capability negotiation,
+not evasion. The twin has exactly the shape of the malicious sibling — same code path, same
+branch on client params — and differs in what it branches ON and whether the extra tool is
+more dangerous or merely more capable."""
