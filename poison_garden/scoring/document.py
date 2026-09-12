@@ -34,30 +34,82 @@ SCHEMA_VERSION = "poison-garden/result@1"
 # Fields a reader might expect but which are deliberately absent (R10). Tests pin this set
 # EXACTLY, because a guard that iterates a list can be nullified by emptying the list — the
 # check keeps passing and a composite score ships.
-FORBIDDEN_FIELDS = frozenset({"score", "overall", "total_score", "grade", "rating", "rank"})
+FORBIDDEN_FIELDS = frozenset(
+    {"score", "grade", "rating", "composite", "aggregate", "index"}
+)
+
+# Every key the document is allowed to contain, at any depth. This is the guard that
+# actually holds: a name-based rule cannot catch a field called `accuracy` or
+# `detection_rate`, which would be a composite score wearing an innocent word. Since we
+# generate this document ourselves from a known schema, an exact key set catches ANY new
+# field — and adding one becomes a deliberate edit to this list.
+ALLOWED_KEYS = frozenset(
+    {
+        "schema", "generated_utc", "notes",
+        "corpus", "version", "hash", "specimen_count",
+        "scanner", "name", "exit_code_mapping",
+        "verdicts", "specimen", "verdict", "exit_code", "duration_s", "error_reason",
+        "per_class", "class", "caught", "total", "recall", "missed", "errored",
+        "false_positives", "specimens", "benign_total", "rate",
+        "errors",
+    }
+)
 
 
 def composite_fields_in(payload: object, _path: str = "") -> list[str]:
-    """Every key in the document that reads as an aggregate score.
+    """Keys that read as an aggregate score, matched on underscore TOKENS.
 
-    Walks KEYS rather than matching substrings in the rendered JSON. A substring check for
-    `"overall"` does not match a field named `overall_recall`, so the obvious way to add a
-    headline number would have slipped straight past it.
+    Two independent reviews converged on tokens over prefix/suffix: the prefix/suffix form
+    missed a mid-compound name like `spearman_rank_correlation`, and tokens close that at
+    no extra complexity. Both also caught a crash I had not: `key.lower()` raises
+    AttributeError on a non-string key, which is plausible here because per-class results
+    are keyed by class.
+
+    `overall` and `rank` were DROPPED from the list deliberately. `overall` collides with
+    `overall_false_positive_rate` — a document-level aggregate R9 explicitly requires — and
+    banning a word the spec mandates is the guard contradicting the requirement it serves.
+    `rank` collides with ordinary statistics (`rank_correlation`) and has only a weak link
+    to composite scoring. What replaces them is `unexpected_fields_in`, which is strictly
+    stronger: it catches a headline number under ANY name, including the `accuracy` and
+    `detection_rate` cases no wordlist can reach.
     """
     found: list[str] = []
     if isinstance(payload, dict):
         for key, value in payload.items():
             here = f"{_path}.{key}" if _path else key
-            lowered = key.lower()
-            if any(
-                lowered == bad or lowered.startswith(f"{bad}_") or lowered.endswith(f"_{bad}")
-                for bad in FORBIDDEN_FIELDS
-            ):
-                found.append(here)
+            if isinstance(key, str):
+                tokens = set(key.lower().replace("-", "_").split("_"))
+                # Singular and plural: `class_scores` must not slip past `score`.
+                tokens |= {t.rstrip("s") for t in tokens}
+                if tokens & FORBIDDEN_FIELDS:
+                    found.append(here)
             found.extend(composite_fields_in(value, here))
     elif isinstance(payload, list):
         for index, item in enumerate(payload):
             found.extend(composite_fields_in(item, f"{_path}[{index}]"))
+    return found
+
+
+def unexpected_fields_in(payload: object, _path: str = "") -> list[str]:
+    """Any key not in `ALLOWED_KEYS`, at any depth.
+
+    The guard that actually holds. A name-based rule is structurally blind to a composite
+    score named `accuracy`, `detection_rate` or `success_rate` — none of those words can be
+    banned without banning legitimate per-class metrics too. Since poison-garden generates
+    this document from a schema it controls, an exact key set catches every new field
+    regardless of what it is called, and adding one becomes a deliberate edit rather than a
+    drift nobody notices.
+    """
+    found: list[str] = []
+    if isinstance(payload, dict):
+        for key, value in payload.items():
+            here = f"{_path}.{key}" if _path else key
+            if isinstance(key, str) and key not in ALLOWED_KEYS:
+                found.append(here)
+            found.extend(unexpected_fields_in(value, here))
+    elif isinstance(payload, list):
+        for index, item in enumerate(payload):
+            found.extend(unexpected_fields_in(item, f"{_path}[{index}]"))
     return found
 
 

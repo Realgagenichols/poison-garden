@@ -34,6 +34,7 @@ from poison_garden.scoring.document import (
     build_document,
     compare,
     composite_fields_in,
+    unexpected_fields_in,
 )
 from poison_garden.scoring.score import (
     ClassScore,
@@ -407,12 +408,12 @@ def test_forbidden_field_list_is_pinned():
     assertion it protects).
     """
     assert sorted(FORBIDDEN_FIELDS) == [
+        "aggregate",
+        "composite",
         "grade",
-        "overall",
-        "rank",
+        "index",
         "rating",
         "score",
-        "total_score",
     ]
 
 
@@ -431,12 +432,14 @@ def test_the_composite_check_actually_fires(corpus):
     results = [SpecimenResult(s.id, Verdict.CLEAN, 0) for s in corpus.specimens]
     doc = build_document(corpus, results, "stub", ExitCodeMapping())
 
-    for injected in ("score", "overall_recall", "final_grade", "rank"):
+    for injected in ("score", "class_scores", "final_grade", "composite", "spearman_index"):
         poisoned = dict(doc.payload)
         poisoned[injected] = 0.93
         assert composite_fields_in(poisoned) == [injected], (
             f"a field named {injected!r} would ship undetected"
         )
+        # And the schema guard must catch it too, by a different mechanism.
+        assert injected in unexpected_fields_in(poisoned)
 
 
 def test_composite_check_reaches_nested_fields(corpus):
@@ -1056,3 +1059,62 @@ def test_document_records_the_hash_captured_before_the_run(corpus):
         corpus, results, "stub", ExitCodeMapping(), corpus_hash_before_run=before
     )
     assert doc.payload["corpus"]["hash"] == before
+
+
+# --- the composite guard, after two independent reviews converged on "tighten" ----------
+
+
+def test_non_string_keys_do_not_crash_the_guards():
+    """Both reviewers caught this and I had not: `key.lower()` raises on a non-string key.
+
+    Plausible rather than exotic here, because per-class results are keyed by class.
+    """
+    payload = {1: {"score": 0.5}, "ok": [{2: "x"}]}
+    assert composite_fields_in(payload) == ["1.score"]
+    unexpected_fields_in(payload)  # must not raise
+
+
+def test_guard_catches_mid_compound_names():
+    """The prefix/suffix form missed these; token matching is why they are caught now."""
+    for name in ("spearman_rank_index", "weighted_composite_value", "class_scores"):
+        assert composite_fields_in({name: 1}) == [name], f"{name} slipped the token match"
+
+
+def test_guard_does_not_reject_a_field_the_spec_requires():
+    """`overall` was dropped deliberately.
+
+    R9 requires a document-level false-positive rate. Banning the word `overall` would
+    have made the guard reject `overall_false_positive_rate` — the guard contradicting the
+    requirement it exists to serve.
+    """
+    for legitimate in (
+        "overall_false_positive_rate",
+        "rank_correlation",
+        "f1",
+        "recall",
+        "false_positive_rate",
+    ):
+        assert composite_fields_in({legitimate: 0.5}) == [], f"{legitimate} wrongly rejected"
+
+
+def test_schema_guard_catches_what_no_wordlist_can(corpus):
+    """The structural point: a composite score can be named with no banned word at all.
+
+    `accuracy`, `detection_rate`, `success_rate` are aggregate figures whose names cannot be
+    banned without banning legitimate per-class metrics. An exact key set catches them
+    because poison-garden generates this document from a schema it controls.
+    """
+    results = [SpecimenResult(s.id, Verdict.CLEAN, 0) for s in corpus.specimens]
+    doc = build_document(corpus, results, "stub", ExitCodeMapping())
+
+    assert unexpected_fields_in(doc.payload) == [], "the real document has an unknown field"
+
+    for sneaky in ("accuracy", "detection_rate", "success_rate", "efficacy"):
+        poisoned = {**doc.payload, sneaky: 0.91}
+        assert composite_fields_in(poisoned) == [], (
+            f"precondition: {sneaky} is invisible to the wordlist, which is the point"
+        )
+        assert unexpected_fields_in(poisoned) == [sneaky], (
+            f"{sneaky} would ship undetected — the schema guard is the only thing that "
+            "catches a headline number wearing an innocent name"
+        )
