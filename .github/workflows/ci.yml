@@ -124,6 +124,40 @@ jobs:
           fi
           echo "confirmed: validation fails on a broken corpus"
 
+  # R15/R16: the submission boundary. A merged result that does not validate, or a
+  # comparison page that was hand-edited or never regenerated, must fail here — those are
+  # the two ways a registrar quietly becomes an editor.
+  submissions:
+    name: submitted results + comparison page
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          enable-cache: true
+
+      - name: Sync
+        run: uv sync
+
+      - name: Every submitted result validates (R15)
+        run: uv run poison-garden validate-result results
+
+      - name: Comparison page is generated, not hand-edited (R16)
+        run: uv run poison-garden leaderboard --check
+
+      - name: The page check can actually fail (P50)
+        run: |
+          set -euo pipefail
+          printf '\n<!-- injected -->\n' >> COMPARISON.md
+          if uv run poison-garden leaderboard --check; then
+            echo "::error::--check passed on a hand-edited page; the guard is dead"
+            exit 1
+          fi
+          git checkout -- COMPARISON.md
+          echo "confirmed: a hand-edit is detected"
+
   # N5 mandates that corpus validation run in CI "including N2". N2 binds at RELEASE
   # rather than at merge (M1 ships declaration classes, which is frisk's strongest
   # ground), but "binds at release" means nothing unless something checks at release.

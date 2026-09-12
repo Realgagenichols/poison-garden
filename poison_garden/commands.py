@@ -128,3 +128,56 @@ def cmd_run(
         print(f"\n  {len(errors)} specimen(s) ERRORED and were excluded: {errors}")
     print(f"\nwrote {written}")
     return EXIT_OK
+
+
+def cmd_validate_result(path: str) -> int:
+    """Validate submitted result document(s). Never modifies them (R15)."""
+    from poison_garden.leaderboard.validate import validate_directory, validate_document
+
+    target = Path(path)
+    if target.is_dir():
+        results = validate_directory(target)
+        if not results:
+            print(f"no result documents in {target}", file=sys.stderr)
+            return EXIT_OK
+    elif target.is_file():
+        results = [validate_document(target)]
+    else:
+        print(f"{target}: not found", file=sys.stderr)
+        return EXIT_TOOL_ERROR
+
+    for result in results:
+        print(result.summary())
+
+    rejected = [r for r in results if not r.ok]
+    if rejected:
+        print(
+            f"\n{len(rejected)} of {len(results)} submission(s) rejected. "
+            "Maintainers do not adjust a submitted figure — the author re-runs and "
+            "resubmits.",
+            file=sys.stderr,
+        )
+        return EXIT_CORPUS_INVALID
+    print(f"\nall {len(results)} submission(s) valid")
+    return EXIT_OK
+
+
+def cmd_leaderboard(results_dir: str, out: str, check: bool = False) -> int:
+    """Render the comparison page, or verify the committed one is current (R16)."""
+    from poison_garden.leaderboard.render import is_stale, write
+
+    if check:
+        if is_stale(results_dir, out):
+            print(
+                f"{out} is stale or hand-edited. It is generated from {results_dir}/ and "
+                "must never be written by hand — regenerate with `poison-garden "
+                "leaderboard`.",
+                file=sys.stderr,
+            )
+            return EXIT_CORPUS_INVALID
+        print(f"{out} is current")
+        return EXIT_OK
+
+    written = write(results_dir, out)
+    print(f"wrote {written}")
+    return EXIT_OK

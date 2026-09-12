@@ -54,6 +54,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_hash = sub.add_parser("hash", help="print the corpus version and content hash")
     p_hash.add_argument("--corpus", default="specimens", help="corpus root (default: specimens)")
 
+    p_vr = sub.add_parser(
+        "validate-result",
+        help="validate submitted result document(s) — never modifies them",
+    )
+    p_vr.add_argument("path", nargs="?", default="results", help="file or directory")
+
+    p_lb = sub.add_parser("leaderboard", help="render the comparison page from results/")
+    p_lb.add_argument("--results", default="results", help="results directory")
+    p_lb.add_argument("--out", default="COMPARISON.md", help="page to write")
+    p_lb.add_argument(
+        "--check",
+        action="store_true",
+        help="do not write; exit non-zero if the committed page is stale",
+    )
+
     p_run = sub.add_parser("run", help="run YOUR scanner over the corpus and score it")
     p_run.add_argument("--corpus", default="specimens", help="corpus root (default: specimens)")
     p_run.add_argument(
@@ -98,6 +113,14 @@ def main(argv: list[str] | None = None) -> int:
             from poison_garden.commands import cmd_hash
 
             return cmd_hash(args.corpus)
+        if args.command == "validate-result":
+            from poison_garden.commands import cmd_validate_result
+
+            return cmd_validate_result(args.path)
+        if args.command == "leaderboard":
+            from poison_garden.commands import cmd_leaderboard
+
+            return cmd_leaderboard(args.results, args.out, check=args.check)
         if args.command == "run":
             from poison_garden.commands import cmd_run
 
