@@ -89,6 +89,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="'nonzero' (default) or a minimum exit code that counts as flagged",
     )
     p_run.add_argument(
+        "--sarif",
+        action="store_true",
+        help="parse the scanner's stdout as SARIF for per-class attribution (R17). "
+             "Optional: without it, and when the output is unusable, scoring falls back "
+             "to exit codes and nothing is lost.",
+    )
+    p_run.add_argument(
         "--timeout",
         type=float,
         default=120.0,
@@ -151,7 +158,11 @@ def main(argv: list[str] | None = None) -> int:
 
             traceback.print_exc()
         else:
-            print("re-run with --debug for detail", file=sys.stderr)
+            print(
+                "re-run with `poison-garden --debug <command> ...` for detail "
+                "(--debug precedes the subcommand)",
+                file=sys.stderr,
+            )
         return EXIT_TOOL_ERROR
 
     # Reachable if a subparser is added above and not wired into the dispatch here.

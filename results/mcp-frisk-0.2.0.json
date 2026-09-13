@@ -1,8 +1,8 @@
 {
   "corpus": {
-    "hash": "sha256:c66e46a969c56189599f2cf3ee937169cf68d00311195f5b766e3673a57390dd",
+    "hash": "sha256:94c0724a9ad4d557f683747480c1410ce22d0619702fffe877c18f4e3e8cbfb7",
     "specimen_count": 26,
-    "version": "0.2.0"
+    "version": "0.2.1"
   },
   "errors": [],
   "false_positives": {
@@ -11,7 +11,7 @@
     "rate": 0.0,
     "specimens": []
   },
-  "generated_utc": "2026-09-12T12:15:16Z",
+  "generated_utc": "2026-09-13T12:08:45Z",
   "notes": "No composite score is reported, by design (R10). An aggregate hides the lopsided class, which is usually the interesting one, and invites the rank-ordering poison-garden refuses to perform. Recall and false positives are reported together because either alone misrepresents the run.",
   "per_class": [
     {
@@ -112,184 +112,236 @@
   "schema": "poison-garden/result@1",
   "verdicts": [
     {
-      "duration_s": 0.4,
+      "attributed": null,
+      "duration_s": 0.56,
       "error_reason": null,
       "exit_code": 2,
+      "sarif_note": null,
       "specimen": "behaviour-credential-reader",
       "verdict": "flagged"
     },
     {
+      "attributed": null,
       "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "behaviour-exfil-in-description",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
+      "sarif_note": null,
       "specimen": "behaviour-namesake-rugpull",
       "verdict": "flagged"
     },
     {
+      "attributed": null,
       "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "behaviour-scanner-aware",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "behaviour-twin-build-fingerprint",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "behaviour-twin-capability-negotiation",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "behaviour-twin-config-reader",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "behaviour-twin-stable-namesakes",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
+      "sarif_note": null,
       "specimen": "hidden-ansi-escape-ci",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
+      "sarif_note": null,
       "specimen": "hidden-bidi-override-export",
       "verdict": "flagged"
     },
     {
+      "attributed": null,
       "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "hidden-content-twin-localization",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 1,
+      "sarif_note": null,
       "specimen": "hidden-markup-comment-inventory",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
+      "sarif_note": null,
       "specimen": "hidden-zero-width-transit",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
+      "sarif_note": null,
       "specimen": "hygiene-anonymous-server",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "hygiene-twin-pinned-installer",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "hygiene-unpinned-remote-exec",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "impersonation-builtin-reader",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "impersonation-twin-wiki-search",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
+      "sarif_note": null,
       "specimen": "injection-invoice-remit-override",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "injection-meeting-preamble",
       "verdict": "clean"
     },
     {
+      "attributed": null,
       "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "injection-twin-invoice-import",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 1,
+      "sarif_note": null,
       "specimen": "scope-mismatch-timezone-helper",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "scope-mismatch-twin-runbook",
       "verdict": "clean"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
+      "sarif_note": null,
       "specimen": "sensitive-params-diagnostics-dump",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.3,
+      "attributed": null,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
+      "sarif_note": null,
       "specimen": "sensitive-params-ticket-transcript",
       "verdict": "flagged"
     },
     {
-      "duration_s": 0.29,
+      "attributed": null,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
+      "sarif_note": null,
       "specimen": "sensitive-params-twin-ticket-router",
       "verdict": "clean"
     }

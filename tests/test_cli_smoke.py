@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from poison_garden.cli import EXIT_TOOL_ERROR, build_parser
 
 # The console script lives beside the interpreter running the tests. Resolving it this way
@@ -97,3 +99,68 @@ def test_no_subcommand_is_a_tool_error_not_success():
         timeout=30,
     )
     assert proc.returncode == EXIT_TOOL_ERROR
+
+
+# --- every subcommand's flags must reach its handler -------------------------------------
+
+
+def test_every_run_flag_the_handler_reads_exists_on_the_parser():
+    """REGRESSION: `--sarif` was wired into the dispatch but never added to the parser.
+
+    `poison-garden run` crashed with AttributeError on EVERY invocation, and the suite did
+    not notice because the `cmd_run` tests call the function directly and never go through
+    argparse. Testing a handler is not testing the command — the wiring between them is its
+    own surface, and this is the second time that seam has produced a defect.
+    """
+    import argparse
+    import ast
+
+    from poison_garden.cli import build_parser
+
+    parser = build_parser()
+    subparsers = next(
+        a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
+    )
+
+    source = ast.parse(Path(__file__).resolve().parent.parent.joinpath(
+        "poison_garden", "cli.py"
+    ).read_text(encoding="utf-8"))
+
+    # Every `args.<name>` the dispatch reads must be a destination some parser defines.
+    read_attrs: set[str] = set()
+    for node in ast.walk(source):
+        if (
+            isinstance(node, ast.Attribute)
+            and isinstance(node.value, ast.Name)
+            and node.value.id == "args"
+        ):
+            read_attrs.add(node.attr)
+
+    defined: set[str] = {"command", "debug"}
+    for sub in subparsers.choices.values():
+        defined |= {a.dest for a in sub._actions}
+
+    missing = sorted(read_attrs - defined)
+    assert not missing, (
+        f"main() reads args.{missing} but no parser defines it — the command will raise "
+        "AttributeError on every invocation"
+    )
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["validate", "--corpus", "specimens"],
+        ["hash", "--corpus", "specimens"],
+        ["validate-result", "results"],
+        ["leaderboard", "--check"],
+        ["run", "--scanner", "x {target}", "--out", "o.json"],
+    ],
+    ids=lambda a: a[0],
+)
+def test_every_subcommand_parses(argv):
+    """Parsing is the cheapest possible smoke test and it would have caught the above."""
+    from poison_garden.cli import build_parser
+
+    parsed = build_parser().parse_args(argv)
+    assert parsed.command == argv[0]

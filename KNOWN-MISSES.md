@@ -17,16 +17,16 @@ Verified by `scripts/audit_n1_independence.py`.
 
 ---
 
-## Corpus v0.2.0 (unreleased)
+## Corpus v0.2.1 (unreleased)
 
 **Corpus state these numbers describe** — without it, an edit to any specimen silently
 invalidates every row below and nothing says so (R4 exists to prevent exactly that):
 
 ```
-corpus version  0.2.0
-corpus hash     sha256:c66e46a969c56189599f2cf3ee937169cf68d00311195f5b766e3673a57390dd
+corpus version  0.2.1
+corpus hash     sha256:94c0724a9ad4d557f683747480c1410ce22d0619702fffe877c18f4e3e8cbfb7
 scanner         mcp-frisk 0.2.0
-measured        2026-09-12
+measured        2026-09-13
 command         poison-garden run --scanner "uvx --from mcp-frisk frisk scan --no-sandbox -- {target}"
 ```
 

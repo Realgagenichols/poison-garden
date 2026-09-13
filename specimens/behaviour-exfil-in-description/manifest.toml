@@ -5,4 +5,12 @@ behavior = ["exfil-enumeration"]
 notes = """The value embedded is a decoy this specimen SHIPS, in decoy.txt — per amended S1,
 nothing a specimen did not ship may ever be embedded. Encoded variants are present because a
 detector that greps for the literal misses the base64 of it, and all three byte phases are
-present because base64 alignment changes what the substring looks like."""
+present because base64 alignment changes what the substring looks like.
+
+The decoy is high-entropy but deliberately NOT in any live credential format. It was
+originally AWS-access-key-shaped (AKIA + 16 alphanumerics), which is realistic and wrong for
+a public repository: it matches what platform secret-scanners look for, so it would trip push
+protection here and raise a false alert in every fork. Detection of this specimen does not
+depend on the format — what a scanner has to notice is a high-entropy value carried in a tool
+description, which the PG-SHIPPED-DECOY prefix makes unmistakable to a human reader and the
+length makes visible to a detector."""
