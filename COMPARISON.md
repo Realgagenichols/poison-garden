@@ -12,7 +12,7 @@ badly, which is usually the interesting one. Compare the columns you care about.
 
 | Scanner | Corpus | credential-access | exfil-enumeration | hidden-content | hygiene | impersonation | injection | namesake-rugpull | scanner-aware | scope-mismatch | sensitive-params | False positives |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| mcp-frisk 0.2.0 | 0.2.1 | 1/1 | 0/1 | 4/4 | 1/2 | 0/1 | 3/4 | 1/1 | 0/1 | 1/1 | 2/2 | 0/10 |
+| mcp-frisk 0.2.0 | 0.2.2 | 1/1 | 0/1 | 4/4 | 1/2 | 0/1 | 3/4 | 1/1 | 0/1 | 1/1 | 2/2 | 0/10 |
 
 ## Reading this table
 

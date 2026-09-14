@@ -1,8 +1,8 @@
 {
   "corpus": {
-    "hash": "sha256:94c0724a9ad4d557f683747480c1410ce22d0619702fffe877c18f4e3e8cbfb7",
+    "hash": "sha256:7ce3e791ef596ed3e74c912512d72d3d38c80d24ebed72225153bf5836294851",
     "specimen_count": 26,
-    "version": "0.2.1"
+    "version": "0.2.2"
   },
   "errors": [],
   "false_positives": {
@@ -11,7 +11,7 @@
     "rate": 0.0,
     "specimens": []
   },
-  "generated_utc": "2026-09-13T12:08:45Z",
+  "generated_utc": "2026-09-14T11:43:31Z",
   "notes": "No composite score is reported, by design (R10). An aggregate hides the lopsided class, which is usually the interesting one, and invites the rank-ordering poison-garden refuses to perform. Recall and false positives are reported together because either alone misrepresents the run.",
   "per_class": [
     {
@@ -113,7 +113,7 @@
   "verdicts": [
     {
       "attributed": null,
-      "duration_s": 0.56,
+      "duration_s": 1.51,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -131,7 +131,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.27,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -140,7 +140,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -149,7 +149,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.27,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -203,7 +203,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -230,7 +230,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -293,7 +293,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -311,7 +311,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -320,7 +320,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -329,7 +329,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
