@@ -1,14 +1,14 @@
 {
   "corpus": {
-    "hash": "sha256:da68fbf55e963b2a0ded8ed727d83b994db1f995843190e8eb0fe246d5406eb6",
-    "specimen_count": 88,
-    "version": "0.3.0"
+    "hash": "sha256:e0f16a9fd0835478fe2ec5038b44eb9987f0e0b883ec35fb7229a4c02097f261",
+    "specimen_count": 97,
+    "version": "0.4.0"
   },
   "errors": [],
   "false_positives": {
-    "benign_total": 30,
+    "benign_total": 33,
     "errored": [],
-    "rate": 0.13333333333333333,
+    "rate": 0.12121212121212122,
     "specimens": [
       "behaviour-twin-attachment-example",
       "hidden-content-twin-ansi-log-viewer",
@@ -16,7 +16,7 @@
       "sensitive-params-twin-credential-rotation"
     ]
   },
-  "generated_utc": "2026-09-14T13:30:15Z",
+  "generated_utc": "2026-09-14T14:01:25Z",
   "notes": "No composite score is reported, by design (R10). An aggregate hides the lopsided class, which is usually the interesting one, and invites the rank-ordering poison-garden refuses to perform. Recall and false positives are reported together because either alone misrepresents the run.",
   "per_class": [
     {
@@ -45,6 +45,40 @@
       "recall_ci95": [
         0.3,
         0.9032
+      ],
+      "sufficient_n": true,
+      "total": 6
+    },
+    {
+      "by_difficulty": {
+        "moderate": {
+          "caught": 0,
+          "total": 3
+        },
+        "overt": {
+          "caught": 0,
+          "total": 1
+        },
+        "subtle": {
+          "caught": 0,
+          "total": 2
+        }
+      },
+      "caught": 0,
+      "class": "egress",
+      "errored": [],
+      "missed": [
+        "behaviour-egress-deferred-first-enumeration",
+        "behaviour-egress-enumeration-order",
+        "behaviour-egress-license-check-on-resources",
+        "behaviour-egress-second-enumeration",
+        "behaviour-egress-startup-beacon",
+        "behaviour-egress-update-check-burst"
+      ],
+      "recall": 0.0,
+      "recall_ci95": [
+        0.0,
+        0.3903
       ],
       "sufficient_n": true,
       "total": 6
@@ -345,7 +379,7 @@
   "verdicts": [
     {
       "attributed": null,
-      "duration_s": 0.58,
+      "duration_s": 0.55,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -354,7 +388,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -363,7 +397,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -372,7 +406,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -381,7 +415,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -390,7 +424,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -400,6 +434,87 @@
     {
       "attributed": null,
       "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-deferred-first-enumeration",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-enumeration-order",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-license-check-on-resources",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-second-enumeration",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-startup-beacon",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-twin-broker-queues",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-twin-render-readiness",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-twin-search-index-daemon",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-egress-update-check-burst",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -417,7 +532,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -426,7 +541,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -435,7 +550,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -444,7 +559,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.34,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -453,7 +568,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -462,7 +577,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -471,7 +586,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -480,7 +595,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -489,7 +604,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.33,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -498,7 +613,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.33,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -507,7 +622,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -516,7 +631,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -525,7 +640,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -534,7 +649,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -543,7 +658,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -552,7 +667,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -561,7 +676,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -570,7 +685,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -579,7 +694,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -588,7 +703,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -597,7 +712,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -606,7 +721,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -615,7 +730,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -624,7 +739,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -633,7 +748,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.35,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -642,7 +757,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -651,7 +766,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -660,7 +775,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -669,7 +784,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -678,7 +793,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -696,7 +811,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -705,7 +820,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -714,7 +829,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -723,7 +838,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -732,7 +847,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -741,7 +856,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -750,7 +865,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -759,7 +874,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -768,7 +883,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -777,7 +892,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -786,7 +901,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -795,7 +910,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -804,7 +919,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -813,7 +928,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -822,7 +937,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -831,7 +946,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -840,7 +955,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -849,7 +964,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -858,7 +973,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -867,7 +982,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -876,7 +991,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -885,7 +1000,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -894,7 +1009,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -903,7 +1018,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -912,7 +1027,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -921,7 +1036,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -930,7 +1045,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -939,7 +1054,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -948,7 +1063,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -957,7 +1072,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -966,7 +1081,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -975,7 +1090,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -984,7 +1099,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -993,7 +1108,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1002,7 +1117,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1011,7 +1126,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -1020,7 +1135,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -1029,7 +1144,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1038,7 +1153,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1047,7 +1162,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1056,7 +1171,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -1065,7 +1180,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1074,7 +1189,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1083,7 +1198,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1092,7 +1207,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.33,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -1101,7 +1216,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -1110,7 +1225,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -1119,7 +1234,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1128,7 +1243,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.31,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,

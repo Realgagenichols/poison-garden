@@ -1,0 +1,16 @@
+id = "behaviour-egress-update-check-burst"
+summary = "Opens five undeclared sockets in a burst on the first tools/list, with an unasked-for 'ruleset refresh' line in the prose to explain them away."
+declaration = []
+behavior = ["egress"]
+difficulty = "moderate"
+notes = """Two axes at once. The connections fire on the first tools/list — five of them,
+one per fabricated 'ruleset shard', in a burst rather than singly — so a rule that flags any
+connect at all and a rule carrying a count or rate threshold give visibly different answers
+on this specimen, which a corpus of single-connect specimens cannot distinguish. The second
+axis is plausible deniability: `lint_config`'s description says the bundled ruleset 'is
+refreshed automatically', a feature that appears in no schema, no parameter and no resource,
+that nobody opted into and that no tool lets you disable or trigger. It is there so that a
+human who observes the sockets and then goes looking for an explanation finds one and stops.
+Catching this means noticing that a sentence in prose is not a declaration and that nothing
+in the server's actual interface corresponds to it. The catalog is a module-level constant,
+identical on every enumeration, so varies_by_invocation does not apply."""

@@ -6,7 +6,7 @@
   <a href="#"><img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white"></a>
   <a href="#"><img alt="Built on MCP" src="https://img.shields.io/badge/built%20on-MCP-58A6FF"></a>
   <a href="https://github.com/Realgagenichols/poison-garden/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Realgagenichols/poison-garden/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="#development"><img alt="1377 tests" src="https://img.shields.io/badge/tests-1377%20passing-3FB950"></a>
+  <a href="#development"><img alt="1512 tests" src="https://img.shields.io/badge/tests-1512%20passing-3FB950"></a>
   <a href="#honesty-commitments"><img alt="No composite score" src="https://img.shields.io/badge/no-composite%20score-F85149"></a>
   <a href="COMPARISON.md"><img alt="Comparison" src="https://img.shields.io/badge/results-self%20reported-D29922"></a>
   <a href="https://github.com/Realgagenichols/poison-garden/blob/main/LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-8957E5"></a>
@@ -34,8 +34,8 @@
 
 > ⚠️ This repository contains intentionally malicious MCP servers, for defensive security
 > testing. **The specimens shipped here** are demonstrative rather than weaponized — they
-> read only decoy credentials and attempt no real network egress, and that is enforced by
-> tests. **The harness is not a sandbox.** Read [Safety](#safety) before running anything.
+> read only decoy credentials, and every socket they open goes to loopback — no packet can
+> leave your machine. Both are enforced by tests. **The harness is not a sandbox.** Read [Safety](#safety) before running anything.
 
 There are now more than a dozen MCP security scanners. Nearly all of them measure the same
 thing: **what a server declares.** They read `tools/list`, pattern-match the text, and report.
@@ -86,11 +86,11 @@ they describe the same specimens:
 
 ```console
 $ uv run poison-garden validate
-OK: 10 class(es) measured across 88 specimen(s) (58 malicious, 30 benign). Every class has at least one benign twin.
+OK: 11 class(es) measured across 97 specimen(s) (64 malicious, 33 benign). Every class has at least one benign twin.
 
 $ uv run poison-garden hash
-version  0.3.0
-hash     sha256:da68fbf55e963b2a0ded8ed727d83b994db1f995843190e8eb0fe246d5406eb6
+version  0.4.0
+hash     sha256:e0f16a9fd0835478fe2ec5038b44eb9987f0e0b883ec35fb7229a4c02097f261
 ```
 
 **3. It reports what the numbers actually support.** Every per-class figure ships with a
@@ -236,6 +236,7 @@ jobs:
 | **`exfil-enumeration`** | Embeds a credential into a tool description — the theft rides the channel the scanner is already reading |
 | **`namesake-rugpull`** | Two tools under one name; which one resolves changes as the session goes on |
 | **`scanner-aware`** | Serves clean definitions to an inspector, poisoned ones to a real agent |
+| **`egress`** | Opens an outbound socket nothing in its catalog implies — loopback only, so the signal is the connection rather than the destination |
 
 Every class ships with **benign twins** — specimens that superficially resemble it but are
 legitimate. A scanner that flags everything scores zero on the twins, which is the point. The
@@ -331,9 +332,13 @@ Stated plainly, because a benchmark that oversells itself is worse than none.
 
 - **Real containment is not implemented.** See [Safety](#safety). A seatbelt profile or
   container is tracked work, not a shipped feature.
-- **The egress class is only observable during our pre-flight.** `PG_EGRESS_SINK` is absent
-  when your scanner spawns the specimen, and a fallback address would mean malicious code in a
-  public repo making outbound connections on your machine. The trade is deliberate.
+- **The egress class demonstrates an undeclared socket, not a remote destination.** A corpus
+  of deliberately malicious code published to strangers has exactly one safe destination, so
+  every specimen reaches loopback and nothing else. The property under test is *undeclared
+  network capability, exercised unprompted* — a timezone converter that opens a socket before
+  serving a request — which is observable whatever it dials. If your scanner deliberately
+  ignores loopback, it will score low here; that is a real difference in what we each think
+  the finding is, and worth saying so in your submission rather than treating as a bug.
 - **Our pre-flight is itself an enumeration.** A specimen whose behavior depends on how many
   times it has run must declare that in its manifest; the shipped rug-pull counts in-process
   precisely so our pre-flight consumes none of your scanner's enumerations.
@@ -355,7 +360,7 @@ Stated plainly, because a benchmark that oversells itself is worse than none.
 export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/poison-garden"
 
 uv sync
-uv run pytest -q                    # 1377 tests
+uv run pytest -q                    # 1512 tests
 uv run --frozen ruff check .        # unpiped: read the exit code, not the last line
 
 # The N1 independence audit needs a frisk checkout alongside this repo

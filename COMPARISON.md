@@ -10,9 +10,9 @@ figure below was produced by the vendor running `poison-garden run` themselves.
 score to sort by, deliberately — an aggregate hides the one class where a tool did
 badly, which is usually the interesting one. Compare the columns you care about.
 
-| Scanner | Corpus | credential-access | exfil-enumeration | hidden-content | hygiene | impersonation | injection | namesake-rugpull | scanner-aware | scope-mismatch | sensitive-params | False positives |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| mcp-frisk 0.2.0 | 0.3.0 | 4/6 | 0/6 | 6/6 | 1/6 | 1/6 | 4/7 | 1/6 | 0/6 | 3/6 | 3/6 | 4/30 |
+| Scanner | Corpus | credential-access | egress | exfil-enumeration | hidden-content | hygiene | impersonation | injection | namesake-rugpull | scanner-aware | scope-mismatch | sensitive-params | False positives |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mcp-frisk 0.2.0 | 0.4.0 | 4/6 | 0/6 | 0/6 | 6/6 | 1/6 | 1/6 | 4/7 | 1/6 | 0/6 | 3/6 | 3/6 | 4/33 |
 
 ## Reading this table
 

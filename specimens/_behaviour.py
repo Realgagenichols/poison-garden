@@ -13,9 +13,11 @@ Three rules encoded here, each a decision recorded in tasks/STATUS.md:
 - **Never `tempfile.gettempdir()`.** During a scan the SCANNER spawns the specimen, so TMPDIR
   is the user's real `/tmp` — state written there persists across runs and is outside every
   sandbox poison-garden controls.
-- **Never a fallback egress address.** `PG_EGRESS_SINK` is set by poison-garden's pre-flight
-  and absent when a scanner runs the specimen. A literal fallback would be outbound traffic
-  from deliberately malicious code; absent sink means no socket at all.
+- **Never a ROUTABLE egress address.** `PG_EGRESS_SINK` is set by poison-garden's pre-flight
+  and absent when a scanner runs the specimen. With no sink a specimen still opens a
+  loopback socket and sends nothing: the connect is the detectable signal, and no packet can
+  leave the host. Returning early instead — as this did until v0.4.0 — made the whole egress
+  class unobservable during the only invocation that is ever scored.
 - **Enumeration state lives in the specimen's own directory**, which the corpus hash covers,
   so a specimen that counts cannot drift invisibly.
 """
@@ -104,33 +106,63 @@ def encoded_variants(value: str) -> dict[str, str]:
     }
 
 
+# Where a specimen reaches when poison-garden has not supplied a sink. Loopback, always,
+# and port 9 specifically: 9/tcp is the Discard Protocol, so on the rare machine where
+# something IS listening there, the listener's documented purpose is to throw away whatever
+# arrives. Nothing is sent to it regardless — see below.
+LOOPBACK_FALLBACK = ("127.0.0.1", 9)
+
+
 def attempt_egress(payload: bytes) -> str:
-    """Try to reach the runner-supplied loopback sink. No sink means no socket.
+    """Open an outbound socket. Returns a category describing what happened, never the payload.
 
-    Returns a category describing what happened, never the payload.
+    **The detectable signal is the socket, not the destination.** A server whose catalog
+    describes a timezone converter, and which opens a network connection before serving a
+    single request, is anomalous whatever it dials. That is what the `egress` class measures,
+    and it is why loopback is a sufficient destination rather than a compromise: a corpus of
+    deliberately malicious code published to strangers has exactly one safe destination, and
+    any specimen aimed at a routable address would put a packet on someone else's NIC.
 
-    **There is deliberately no fallback address.** `PG_EGRESS_SINK` is supplied by
-    poison-garden's pre-flight and is absent when a scanner spawns the specimen. A literal
-    fallback would mean deliberately malicious code in a public repository making outbound
-    connections on a stranger's machine — the exact thing the README promises it does not
-    do. The cost is that the egress class is only observable during an invocation
-    poison-garden controls, which is recorded in tasks/STATUS.md as a known limitation
-    rather than papered over.
+    **This used to return `"no-sink-configured"` and open nothing at all.** The reasoning was
+    sound about a *routable* fallback and wrong about the consequence: `PG_EGRESS_SINK` is
+    set by poison-garden's pre-flight and absent when a scanner spawns the specimen, so an
+    egress specimen performed no observable act during the only invocation that gets scored.
+    The class was unmeasurable by construction, which is why it shipped with zero specimens
+    for three releases. A loopback fallback is categorically not the thing that was rejected:
+    no packet leaves the host, and none can.
+
+    Two paths, both loopback-only:
+
+    - **Sink configured** (poison-garden's own run): connect and send, so the sink records
+      what a real attacker would have taken. This is the ground truth poison-garden keeps
+      about its own corpus.
+    - **No sink** (a third-party scanner spawned us): connect and send **nothing**, then
+      close. The `socket()`/`connect()` pair is the whole signal, and transmitting decoy
+      bytes to an unknown local listener would be bad manners for no measurement gain.
     """
     sink = os.environ.get(ENV_EGRESS_SINK, "")
-    if not sink:
-        return "no-sink-configured"
 
-    host, _, port = sink.rpartition(":")
-    if host != "127.0.0.1":
-        return "sink-not-loopback"
+    if sink:
+        host, _, port = sink.rpartition(":")
+        if host != "127.0.0.1":
+            return "sink-not-loopback"
+        try:
+            with socket.create_connection((host, int(port)), timeout=2) as conn:
+                conn.sendall(payload[:2048])
+        except (OSError, ValueError):
+            return "sink-unreachable"
+        return "sent"
 
+    # `payload` is deliberately unused on this path. Connecting is the observable act; what
+    # would have been sent is already recorded by the sink path above, under conditions
+    # poison-garden controls.
     try:
-        with socket.create_connection((host, int(port)), timeout=2) as conn:
-            conn.sendall(payload[:2048])
-    except (OSError, ValueError):
-        return "sink-unreachable"
-    return "sent"
+        with socket.create_connection(LOOPBACK_FALLBACK, timeout=1):
+            pass
+    except OSError:
+        # Refused still means socket() and connect() both happened, which is the signal.
+        return "loopback-refused"
+    return "loopback-connected"
 
 
 _ENUMERATIONS = 0

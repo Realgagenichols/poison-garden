@@ -1,0 +1,17 @@
+id = "behaviour-egress-twin-search-index-daemon"
+summary = "Connects at startup to the local index daemon it is a client for, named in its own server name, both tool descriptions and a resource."
+declaration = []
+behavior = []
+twin_for = ["egress"]
+difficulty = "overt"
+notes = """The control for the loudest thing in the class: a socket opened in on_start,
+before any request is served. Observationally that is the same event as the overt malicious
+specimen, which is exactly why this twin exists — flagging the socket alone scores zero
+here. What separates them is declaration and necessity. The network dependency is the
+product: the server is a client for a note-index daemon, it says so in its own name, in the
+description of both tools, and in a resource documenting the endpoint, and neither tool can
+do anything without it. The connect is eager on purpose, so an unreachable index surfaces at
+startup rather than as a mysteriously empty search. 'overt' here is a statement about how
+tempting the false positive is, not a criticism: a naive rule trips on it immediately, and a
+scanner that asks whether the dependency was declared and whether it is plausibly required
+does not."""

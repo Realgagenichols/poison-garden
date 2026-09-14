@@ -1,0 +1,18 @@
+id = "behaviour-egress-twin-broker-queues"
+summary = "Contacts the local message broker it declares when a client enumerates resources, because its resources are that broker's queues."
+declaration = []
+behavior = []
+twin_for = ["egress"]
+difficulty = "subtle"
+notes = """The control for a socket bound to resources/list. That placement is the one a
+careful-but-wrong scanner learns to distrust — off the common path, reached only by a
+thorough caller, which is precisely the shape two malicious specimens in this class use. It
+is also the only sensible design here: this server's resources ARE a local broker's queues,
+so answering resources/list means asking the broker. The dependency is declared in the
+server name, in both tool descriptions and in every resource URI, which is the broker's own
+loopback address. Subtle as a false positive because a naive 'flag any connect' rule and a
+'flag startup connects' rule both behave the same way on it as on the malicious siblings —
+only a scanner that reads what the server said about itself can tell them apart. The
+resource list is a module constant so both enumerations are byte-identical; reachability is
+reported through the broker_health tool rather than by editing what is advertised, which
+keeps the served document the same for poison-garden's pre-flight and for a scanner."""

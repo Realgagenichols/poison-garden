@@ -9,13 +9,16 @@ from __future__ import annotations
 
 import atexit
 import json
+import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
 
-from poison_garden.runner.sandbox import EgressSink, Sandbox, build_home
+from poison_garden.runner.sandbox import ENV_EGRESS_SINK, EgressSink, Sandbox, build_home
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SPECIMENS = REPO_ROOT / "specimens"
@@ -328,3 +331,68 @@ def variation_defects(specimen_id: str, catalogs: list[str], fires_at: int) -> l
 # inspector and the agents differ on ALL of them rather than on whichever one a specimen
 # happened to need.
 PROFILE_AXES = ("enumerations", "sends_initialized", "sweeps_first")
+
+
+def opens_a_socket(entrypoint: Path, timeout: float = 15.0) -> bool:
+    """Drive a specimen with a real listener as its sink and report whether it connected.
+
+    Shared by the R21 corpus guards and by the `egress` behavioural strawman, because they
+    ask the same question and two spellings of one predicate drift apart (P95). The naive
+    rule this models is "the server opened a socket" — which fires on the malicious
+    specimens and on every egress twin alike, and that identity is the whole point of the
+    twins.
+
+    Observed rather than inferred from source: a specimen that imports the helper and never
+    calls it, or calls it on a branch that never runs, would pass any static check while
+    demonstrating nothing (P86 — measure the artifact, not the file that produced it).
+    """
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    listener.settimeout(timeout)
+    seen = threading.Event()
+
+    def accept_loop() -> None:
+        while not seen.is_set():
+            try:
+                conn, _ = listener.accept()
+            except (TimeoutError, OSError):
+                return
+            seen.set()
+            conn.close()
+
+    thread = threading.Thread(target=accept_loop, daemon=True)
+    thread.start()
+    try:
+        host, port = listener.getsockname()
+        messages = "\n".join(
+            json.dumps(m)
+            for m in (
+                {
+                    "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {"roots": {}, "sampling": {}},
+                        "clientInfo": {"name": "host", "version": "1", "title": "Host"},
+                    },
+                },
+                {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+                {"jsonrpc": "2.0", "id": 3, "method": "resources/list"},
+                {"jsonrpc": "2.0", "id": 4, "method": "tools/list"},
+            )
+        ) + "\n"
+        subprocess.run(
+            [sys.executable, str(entrypoint)],
+            input=messages,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            env={**os.environ, ENV_EGRESS_SINK: f"{host}:{port}"},
+        )
+        return seen.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        return seen.is_set()
+    finally:
+        seen.set()
+        listener.close()

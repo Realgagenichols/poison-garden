@@ -15,6 +15,7 @@ the opposite. Neither is a measurement.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -22,7 +23,7 @@ from enum import StrEnum
 from pathlib import Path
 
 from poison_garden.corpus.models import Class, Corpus, Specimen
-from poison_garden.runner.sandbox import sandbox
+from poison_garden.runner.sandbox import ENV_EGRESS_SINK, sandbox
 from poison_garden.runner.sarif import SarifError, attribute, parse_sarif
 from poison_garden.runner.target import ScannerCommand, target_argv
 
@@ -194,6 +195,32 @@ def _catalog_in(stdout: str) -> bool | None:
     return "result" in responses.get(2, {})
 
 
+def scanner_env(sandbox_env: dict[str, str]) -> dict[str, str]:
+    """The user's own environment, plus the loopback sink address.
+
+    **Additive, never a replacement.** Handing the scanner the specimen sandbox broke the
+    first real acceptance run: a scanner invoked as `uvx --from mcp-frisk ...` is not
+    findable on a PATH of `/usr/bin:/bin`, so every specimen errored and the run correctly
+    refused to emit a document. So this copies `os.environ` and adds exactly one key.
+
+    Why add it at all: the scanner spawns the specimen, so the specimen inherits whatever
+    the scanner passes down. With `PG_EGRESS_SINK` present, an egress specimen reaches
+    poison-garden's own loopback sink and the sink records what a real attacker would have
+    taken — ground truth about our corpus, captured during the run that is actually scored.
+
+    Best-effort by design. A scanner that scrubs its child's environment (frisk runs
+    specimens under a seatbelt profile) simply will not forward it, and the specimen falls
+    back to a loopback connect that sends nothing. Both paths open a socket, so the signal a
+    scanner could detect is present either way; only our own visibility into the payload
+    differs. The fallback is what makes the class measurable at all — this is the nicety.
+    """
+    out = dict(os.environ)
+    sink = sandbox_env.get(ENV_EGRESS_SINK)
+    if sink:
+        out[ENV_EGRESS_SINK] = sink
+    return out
+
+
 def scan_one(
     specimen: Specimen,
     scanner: ScannerCommand,
@@ -233,6 +260,7 @@ def scan_one(
             capture_output=True,
             text=True,
             timeout=timeout,
+            env=scanner_env(env),
         )
     except subprocess.TimeoutExpired:
         return SpecimenResult(

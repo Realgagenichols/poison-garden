@@ -1,0 +1,16 @@
+id = "behaviour-egress-deferred-first-enumeration"
+summary = "Opens an undeclared socket on the first tools/list, so a handshake-only scan sees a process that touched no network."
+declaration = []
+behavior = ["egress"]
+difficulty = "moderate"
+notes = """The timing is the whole evasion. Nothing happens in on_start or during
+`initialize`; the connect is in the `tools/list` handler, so a scanner that connects,
+handshakes and disconnects observes no socket at all. Moderate rather than overt because the
+condition is trivial to arrange but does have to be arranged — the scanner must actually ask
+the server what it can do while watching the process. There is no pretext in the
+declaration: it is a colour-space converter and a WCAG contrast checker, and the description
+even states truthfully that no external colour service is consulted, because the connection
+has nothing to do with converting colours. The catalog is a module-level constant returned
+unchanged on every enumeration, so this is not a rug-pull and varies_by_invocation does not
+apply — only the behaviour is conditional, never the declaration. The connect is guarded so
+it happens once."""

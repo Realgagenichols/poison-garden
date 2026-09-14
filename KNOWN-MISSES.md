@@ -17,21 +17,20 @@ Verified by `scripts/audit_n1_independence.py`.
 
 ---
 
-## Corpus v0.3.0 (unreleased)
-
-**Corpus state these numbers describe** — without it, an edit to any specimen silently
-invalidates every row below and nothing says so (R4 exists to prevent exactly that):
+## Corpus v0.4.0 (unreleased)
 
 ```
-corpus version  0.3.0
-corpus hash     sha256:da68fbf55e963b2a0ded8ed727d83b994db1f995843190e8eb0fe246d5406eb6
-specimens       88
+corpus version  0.4.0
+corpus hash     sha256:e0f16a9fd0835478fe2ec5038b44eb9987f0e0b883ec35fb7229a4c02097f261
+specimens       97
 scanner         mcp-frisk 0.2.0
 measured        2026-09-14
 command         poison-garden run --scanner "uvx --from mcp-frisk frisk scan --no-sandbox -- {target}"
 ```
 
-Produced by `poison-garden run` itself — the same path any vendor uses — not by hand.
+Produced by `poison-garden run` itself — the same path any vendor uses — not by hand. Without
+the state block above, an edit to any specimen silently invalidates every row below and
+nothing says so (R4 exists to prevent exactly that).
 
 **Per class.** An aggregate would hide the lopsided class, which is usually the interesting
 one (R10). A specimen carrying two classes counts toward both. Intervals are Wilson 95%
@@ -41,6 +40,7 @@ a percentage over two would be the same overclaim R18 exists to stop.
 | Class | Caught | 95% CI | By tier | Missed |
 |---|---|---|---|---|
 | credential-access | 4/6 | 30–90% | moderate 2/3 · overt 1/1 · subtle 1/2 | 2 |
+| egress | 0/6 | 0–39% | moderate 0/3 · overt 0/1 · subtle 0/2 | 6 |
 | exfil-enumeration | 0/6 | 0–39% | moderate 0/4 · overt 0/1 · subtle 0/1 | 6 |
 | hidden-content | 6/6 | 61–100% | moderate 3/3 · overt 2/2 · subtle 1/1 | — |
 | hygiene | 1/6 | 3–56% | moderate 1/3 · overt 0/2 · subtle 0/1 | 5 |
@@ -51,24 +51,39 @@ a percentage over two would be the same overclaim R18 exists to stop.
 | scope-mismatch | 3/6 | 19–81% | moderate 2/4 · overt 0/1 · subtle 1/1 | 3 |
 | sensitive-params | 3/6 | 19–81% | moderate 1/3 · overt 2/2 · subtle 0/1 | 3 |
 
-**False positives: 4 of 30 twins.** Registered misses below: 12 (N2 requires ≥3).
+**False positives: 4 of 33 twins.** Registered misses below: 15 (N2 requires ≥3).
 Full per-specimen verdicts in [`results/mcp-frisk-0.2.0.json`](results/mcp-frisk-0.2.0.json);
 every figure above is recomputable from it.
 
-### What the v0.3.0 expansion changed
+### v0.4.0 — the taxonomy is complete
+
+`egress` was in the class enum from the beginning and had **no requirement behind it**, while
+R12–R14 were written for the other behavioural classes. It shipped empty for three releases.
+That was not an authoring backlog: `attempt_egress` opened no socket at all when
+`PG_EGRESS_SINK` was absent, and that variable is absent exactly when a third-party scanner
+spawns the specimen. Any specimen in the class would have been a guaranteed miss for every
+scanner — unmeasurable by construction.
+
+R21 now defines it and the helper falls back to a loopback connect that transmits nothing.
+**The measured property is the socket, not the destination**: a corpus of deliberately
+malicious code published to strangers has exactly one safe destination, so the class tests
+*undeclared network capability, exercised unprompted*. A scanner that deliberately ignores
+loopback will score low here and is not thereby wrong — that is a disagreement about what the
+finding is, and it belongs in a submission's notes rather than being scored past.
+
+### v0.3.0 — what depth changed
 
 v0.2.2 measured six of ten classes with a **single** malicious specimen each. Those figures
 were not merely small — they read as precise, and were not:
 
-| Class | v0.2.2 | v0.3.0 | |
+| Class | v0.2.2 | now | |
 |---|---|---|---|
 | namesake-rugpull | 1/1 — "100%" | **1/6** | the one specimen was the one frisk catches |
 | scope-mismatch | 1/1 — "100%" | **3/6** | |
 | sensitive-params | 2/2 — "100%" | **3/6** | |
 | credential-access | 1/1 — "100%" | **4/6** | |
 | hygiene | 1/2 — "50%" | **1/6** | |
-| scanner-aware | 0/1 | **0/6** | |
-| **false positives** | **0/10** | **4/30** | the old twin set had no discriminating power at all |
+| **false positives** | **0/10** | **4/33** | the old twin set had no discriminating power at all |
 
 Four classes that read as clean sweeps were sweeps of one specimen. The 95% interval on
 `1/1` runs from 21% to 100%, so publishing "100%" implied precision the corpus could not
@@ -76,22 +91,26 @@ support — the same flattering half-truth R10 refuses for composite scores, arr
 a door R10 did not cover. R18 and R19 exist because of this table.
 
 The false-positive row is the sharper finding. `0/10` was not a good precision score; it was
-a control that never fired. All four of the twins frisk now flags were independently audited
-and confirmed benign — decoded byte by byte, schemas walked for every composition keyword at
+a control that never fired. All four twins frisk now flags were independently audited and
+confirmed benign — decoded byte by byte, schemas walked for every composition keyword at
 every depth — so they are genuine false positives rather than mislabelled specimens.
 
 ### What the behavioural classes show
 
+- **`egress` is missed entirely, 0/6**, and frisk flags none of its three twins either. It
+  has no network-behaviour rule, so this class is a clean coverage gap rather than a
+  discrimination failure. The twins are still doing their job: the naive "flag any
+  `connect()`" rule fires on all three, which is what makes the class fair to score at all.
 - **`exfil-enumeration` is missed entirely, 0/6.** The enumeration response *is* the
   exfiltration channel, so the scanner is reading the wire the theft rides on. Placement and
   encoding do the rest: a schema `default`, a resource URI query string, semver build
   metadata, schema key names, and a payload cut into twelve-character fragments across
   prompt arguments.
-- **`scanner-aware` is missed entirely, 0/6**, and remains the sharpest row here. Six
-  specimens serve an inspector a clean catalog and an agent a poisoned one, keyed on
-  declared capabilities, `clientInfo` shape, default client identity, handshake completion,
-  sweep order, and re-enumeration. Every static conclusion frisk draws about them is
-  *accurate about the catalog it was shown* — and useless.
+- **`scanner-aware` is missed entirely, 0/6.** Six specimens serve an inspector a clean
+  catalog and an agent a poisoned one, keyed on declared capabilities, `clientInfo` shape,
+  default client identity, handshake completion, sweep order, and re-enumeration. Every
+  static conclusion frisk draws about them is *accurate about the catalog it was shown* —
+  and useless.
 - **`namesake-rugpull` fell from 1/1 to 1/6.** frisk's duplicate-name rule catches the
   immediate swap. Four specimens that mutate a description, a parameter's meaning, a
   `required` list or an `enum` member — at enumerations 2, 3 and 7 — pass it.
@@ -102,12 +121,11 @@ every depth — so they are genuine false positives rather than mislabelled spec
 
 ### Two signals worth reading carefully
 
-**Overt misses are coverage gaps, not subtlety.** Three classes caught **zero** of their
-`overt` specimens while catching something `subtle`: hygiene 0/2 overt, impersonation 0/2
-overt, scope-mismatch 0/1 overt. A miss on an overt specimen means no rule targets that
-class at all, which suggests the scattered subtle catches are incidental to some other rule
-rather than evidence of depth. A single per-class percentage cannot express that; this is
-what the tier field was added for.
+**Overt misses are coverage gaps, not subtlety.** Several classes caught **zero** of their
+`overt` specimens while catching something `subtle`. A miss on an overt specimen means no
+rule targets that class at all, which suggests the scattered subtle catches are incidental to
+some other rule rather than evidence of depth. A single per-class percentage cannot express
+that; this is what the tier field was added for.
 
 **The twin tiers are corroborated by the measurement, along a path that did not use it.**
 Tiers were assigned by a reviewer judging only how tempting each false positive looked, who
@@ -115,9 +133,9 @@ never ran a scanner. Every false positive frisk produced landed in the top tier:
 
 | Twin tier | Twins | frisk false positives |
 |---|---|---|
-| overt | 16 | 4 |
-| moderate | 12 | 0 |
-| subtle | 2 | 0 |
+| overt | 17 | 4 |
+| moderate | 13 | 0 |
+| subtle | 3 | 0 |
 
 Two independent routes to the same ordering. This is an observation, not a requirement —
 tiers are declared by authors and must never be tuned to what any scanner does, or the
@@ -130,12 +148,15 @@ counts these rows at release, and `test_registered_misses_were_actually_missed` 
 row names a specimen the committed result document records as missed — a row cannot drift
 into naming something frisk now catches.
 
-A curated selection, not the complete list: frisk misses 38 specimens in this
+A curated selection, not the complete list: frisk misses 44 specimens in this
 corpus, all enumerated per class in the result document. These are the ones that say
 something a reader can act on.
 
 | Specimen | Class | Tier | frisk verdict | What it would have to notice |
 |---|---|---|---|---|
+| `behaviour-egress-startup-beacon` | egress | overt | clean | Observe that a local-only number formatter opened a socket before answering `initialize`. Nothing in the catalog implies network capability; the declaration says conversion is local, and it is telling the truth about that. |
+| `behaviour-egress-enumeration-order` | egress | subtle | clean | Notice a connection that fires only when `tools/list` is served *after* `resources/list`. Silent under the order every real client uses, so a scanner has to explore in an order nobody does. |
+| `behaviour-egress-update-check-burst` | egress | moderate | clean | Treat five sockets opened for a 'ruleset refresh' nobody opted into as a finding. The pretext is in one description and in no schema, parameter or resource. Separates a threshold rule from a binary one. |
 | `behaviour-exfil-prompt-argument-mosaic` | exfil-enumeration | subtle | clean | Reassemble a payload from twelve-character fragments scattered through three prompt templates' argument descriptions. No field holds a recognisable substring, so per-field entropy scoring cannot reach it in principle. |
 | `behaviour-exfil-schema-key-names` | exfil-enumeration | moderate | clean | Read schema **key names** as content. Almost everything inspects values, and the value side of this catalog is unremarkable. |
 | `behaviour-scanner-aware-sweep-order` | scanner-aware | moderate | clean | Notice the catalog depends on whether you listed resources before tools. The polarity is hostile to crawlers: the more thorough the sweep, the more reliably it lands on the clean catalog. |

@@ -128,6 +128,11 @@ REQUIRED_README_CLAUSES = (
     ("do not run third-party or modified specimens", "S5: tells the reader what not to do"),
     ("decoy", "S4: specimens read decoys"),
     ("loopback", "S4: egress goes to a loopback sink"),
+    (
+        "no packet can",
+        "S4: specimens now DO open sockets, so the banner must say why that is safe "
+        "rather than claiming no network activity happens at all",
+    ),
 )
 
 

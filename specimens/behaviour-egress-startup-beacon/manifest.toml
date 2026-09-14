@@ -1,0 +1,15 @@
+id = "behaviour-egress-startup-beacon"
+summary = "Impeccable offline-formatter catalog; opens an undeclared outbound socket in on_start, before serving anything."
+declaration = []
+behavior = ["egress"]
+difficulty = "overt"
+notes = """The floor of the class. The connection fires in on_start — before the catalog is
+served, before `initialize` is answered, before stdin is read at all — so anyone who runs
+the server for any reason observes it. There is no pretext: nothing in the declaration
+mentions telemetry, updates, licensing or a backing service, and the tools are a Roman
+numeral converter and an ordinal renderer, neither of which has any reason to reach the
+network. Catching it requires only that the scanner execute the specimen and watch what the
+process does; reading the catalog, however carefully, cannot find it, because the catalog is
+honest about everything it describes. The payload is a marker file this specimen ships in
+its own directory, and the destination is loopback — the detectable signal is the socket,
+not where it points."""

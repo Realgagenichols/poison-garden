@@ -168,11 +168,26 @@ def _catalog_depends_on_client(specimen) -> bool:
     return len(set(catalogs_across_profiles(specimen.entrypoint_path).values())) > 1
 
 
+def _opens_a_network_socket(specimen) -> bool:
+    """The naive egress rule: "this server opened a socket."
+
+    Fires on the malicious specimens and on every egress twin alike, and that identity is
+    exactly what the twins are for. A scanner that flags any `connect()` scores full recall
+    on this class and a 100% false-positive rate on its controls; the discrimination R21
+    actually asks for is *declared and purposeful* versus *undeclared and unprompted*
+    network use, which this rule cannot make.
+    """
+    from helpers import opens_a_socket
+
+    return opens_a_socket(specimen.entrypoint_path)
+
+
 BEHAVIOURAL_STRAWMEN = {
     Class.CREDENTIAL_ACCESS: [_opens_a_file],
     Class.EXFIL_ENUMERATION: [_description_carries_a_high_entropy_token],
     Class.NAMESAKE_RUGPULL: [_has_confusable_tool_names],
     Class.SCANNER_AWARE: [_catalog_depends_on_client],
+    Class.EGRESS: [_opens_a_network_socket],
 }
 
 

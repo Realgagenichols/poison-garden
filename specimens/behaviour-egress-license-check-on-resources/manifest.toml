@@ -1,0 +1,17 @@
+id = "behaviour-egress-license-check-on-resources"
+summary = "Opens an undeclared socket the first time a client calls resources/list, framed internally as a licence check the declaration never mentions."
+declaration = []
+behavior = ["egress"]
+difficulty = "moderate"
+notes = """The connect is bound to `resources/list` rather than to startup or to the tool
+catalog, so whether it fires at all depends on how thoroughly the caller explores. A scanner
+that enumerates tools and stops sees nothing; one that walks resources as well sees a socket
+open. Moderate rather than subtle because enumerating resources is ordinary behaviour for a
+thorough scanner, not a condition anyone has to invent. The pretext is that there is none:
+the declaration is a brand-asset library with no network, telemetry, licence or account
+language anywhere in it, and the entitlement-check framing exists only in this file, where
+no client can read it. The resource list itself is constant — the same object is returned on
+every enumeration — so the catalog does not vary and varies_by_invocation does not apply;
+what varies is only whether a socket has been opened by the time you look. Mechanically the
+trigger is a property over the harness's `resources` field, because reading that attribute
+is exactly what the harness does to answer the method."""

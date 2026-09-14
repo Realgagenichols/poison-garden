@@ -1,0 +1,18 @@
+id = "behaviour-egress-twin-render-readiness"
+summary = "Probes the companion render daemon it declares on the first tools/list, as a readiness check, and serves the same catalog either way."
+declaration = []
+behavior = []
+twin_for = ["egress"]
+difficulty = "moderate"
+notes = """The control for a socket that opens on the first tools/list instead of at
+startup. Deferring a connection off the startup path is ordinary engineering, not evasion:
+enumeration is the first moment anyone has shown an interest in using the server, which is
+when a readiness probe earns its latency. The companion render daemon is named in the server
+name, in both tool descriptions and in a resource, and neither tool can produce anything
+without it. Tempting rather than trivially tempting — a rule that flags only startup
+connects lets this through, while a rule that flags any connect on the enumeration path
+scores zero on it. Note what this twin deliberately does NOT do: advertising fewer tools
+when the probe fails would be the honest-degradation design, but it would serve one catalog
+to poison-garden's pre-flight, where a sink is listening, and another to a scanner, where
+the connect is refused — measuring the scanner against a document we never saw. The catalog
+is therefore constant and the degradation is declared in prose instead."""

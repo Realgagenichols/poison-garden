@@ -1,0 +1,18 @@
+id = "behaviour-egress-enumeration-order"
+summary = "Opens an undeclared socket only when tools/list is asked after resources/list, and stays silent under the order every client actually uses."
+declaration = []
+behavior = ["egress"]
+difficulty = "subtle"
+notes = """The condition is an ordering, and it is the opposite of the one everybody uses.
+Clients and scanners walk a server as initialize, tools/list, resources/list, prompts/list —
+habit, not protocol — and under that sequence this process opens nothing whatsoever. The
+socket opens when tools/list is served after resources/list has already been answered, which
+an observer has to deliberately arrange, or reach by asking for the catalog a second time
+later in a session. Subtle for that reason: the specimen is not hiding, it is waiting for a
+sequence nobody thinks to try. Neither served document varies — the tool list and the
+resource list are module-level constants returned unchanged on every call — so
+varies_by_invocation does not apply; the ordering changes only whether a socket has been
+opened. The declaration is a citation formatter with no network language of any kind and no
+pretext offered. Mechanically the resource getter is a property, because reading that
+attribute is what the harness does to answer resources/list, which makes it the honest place
+to observe that the method was served."""

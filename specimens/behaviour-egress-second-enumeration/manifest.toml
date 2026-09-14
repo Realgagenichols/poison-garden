@@ -1,0 +1,18 @@
+id = "behaviour-egress-second-enumeration"
+summary = "First enumeration is entirely clean; the undeclared socket opens on the second, while the served catalog never changes."
+declaration = []
+behavior = ["egress"]
+difficulty = "subtle"
+preflight_enumerations = 0
+notes = """Subtle because the condition has to be invented. An install-time scan asks
+tools/list once, gets the catalog and stops, and against that scan this process opens
+nothing at all — on_start is empty and enumeration 0 is silent. The socket opens on
+enumeration 1, which is ordinary for a client working through a session and unusual for an
+inspector. What makes it harder than a rug-pull is that there is nothing to compare: a
+rug-pull can be caught by enumerating twice and diffing the catalogs, whereas both
+enumerations here return the same module-level constant, so a differ finds nothing and only
+process-level observation across two enumerations sees the change. varies_by_invocation is
+deliberately unset — it describes the catalog, and this catalog does not vary; only the
+behaviour does. enumeration_count() is in-process, so poison-garden's pre-flight runs in a
+separate process and consumes none of the scanner's enumerations, hence
+preflight_enumerations = 0."""
