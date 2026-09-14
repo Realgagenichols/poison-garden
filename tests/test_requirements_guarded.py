@@ -98,11 +98,39 @@ def test_the_network_guard_can_actually_fire():
     assert not wrong, f"network guard misclassifies: {wrong}"
 
 
+# Call names that would make the sink a client rather than a listener. Matched against the
+# PARSED call graph, never against source text: the substring form asserted `"connect(" not
+# in source` and broke on a docstring explaining that "a client's `connect()` returns once
+# the connection is queued". That is the same defect as a `\bpath\b` rule matching
+# `from pathlib import Path` — it matched the topic, and prose about networking is exactly
+# what a module owning the sink should contain (P90 — a scripted check over code needs a
+# parser, not a grep).
+_OUTBOUND_CALLS = frozenset(
+    {"connect", "connect_ex", "create_connection", "urlopen", "gethostbyname", "urlretrieve"}
+)
+
+
+def _called_names(path) -> set[str]:
+    """Every function or method name actually invoked in a module."""
+    import ast
+
+    called: set[str] = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if isinstance(func, ast.Name):
+            called.add(func.id)
+        elif isinstance(func, ast.Attribute):
+            called.add(func.attr)
+    return called
+
+
 def test_sandbox_is_the_only_networking_module_and_is_loopback_only():
     """The one module allowed to touch the network must still be loopback-only.
 
-    Stated as an assertion rather than a comment, because M3 adds egress-behaviour
-    specimens and this is the line that keeps "the sink" from growing into "the network".
+    Stated as an assertion rather than a comment, because the egress-behaviour specimens
+    make this the line that keeps "the sink" from growing into "the network".
     """
     sandbox = REPO_ROOT / "poison_garden/runner/sandbox.py"
     names = [n for n, _ in _imports_in(sandbox)]
@@ -110,8 +138,26 @@ def test_sandbox_is_the_only_networking_module_and_is_loopback_only():
 
     source = sandbox.read_text(encoding="utf-8")
     assert 'host: str = "127.0.0.1"' in source, "the sink must default to loopback"
-    for outbound in ("connect(", "urlopen", "gethostbyname", "0.0.0.0"):
-        assert outbound not in source, f"sandbox.py performs outbound networking: {outbound}"
+    assert "0.0.0.0" not in source, "the sink must not bind every interface"
+
+    outbound = sorted(_called_names(sandbox) & _OUTBOUND_CALLS)
+    assert not outbound, f"sandbox.py performs outbound networking: {outbound}"
+
+
+def test_the_outbound_call_guard_catches_a_real_outbound_call(tmp_path):
+    """P31/P50: the guard now parses rather than greps, so prove it still fires.
+
+    Also proves it does NOT fire on prose — the exact regression that prompted the rewrite.
+    """
+    offender = tmp_path / "offender.py"
+    offender.write_text("import socket\ns = socket.socket()\ns.connect(('10.0.0.1', 80))\n")
+    assert _called_names(offender) & _OUTBOUND_CALLS == {"connect"}
+
+    innocent = tmp_path / "innocent.py"
+    innocent.write_text('"""A client\'s `connect()` returns once queued."""\nx = 1\n')
+    assert not _called_names(innocent) & _OUTBOUND_CALLS, (
+        "the guard fires on a docstring mentioning connect() — it is greping again"
+    )
 
 
 # --- S4 / S5: the README makes safety claims that nothing guarded ------------------------

@@ -117,6 +117,10 @@ class EgressSink:
     _thread: threading.Thread | None = field(default=None, repr=False)
     _handlers: list[threading.Thread] = field(default_factory=list, repr=False)
     _stop: threading.Event = field(default_factory=threading.Event, repr=False)
+    # "Drain the listen backlog, then exit" — distinct from `_stop`, which means "exit now".
+    # The accept loop treats a single `accept()` timeout while finishing as proof the queue
+    # is empty, which is what makes teardown deterministic rather than a race.
+    _finishing: threading.Event = field(default_factory=threading.Event, repr=False)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     # repr=False: payloads are exfiltrated decoy credentials (S3).
     connections: list[bytes] = field(default_factory=list, repr=False)
@@ -157,6 +161,11 @@ class EgressSink:
             try:
                 conn, _ = server.accept()
             except TimeoutError:
+                # An `accept()` timeout means nothing is queued. While finishing, that is
+                # the signal the backlog is empty and the loop may exit — the only
+                # deterministic "queue is drained" answer the sockets API offers.
+                if self._finishing.is_set():
+                    return
                 continue
             except OSError as exc:
                 # A transient accept error (ECONNABORTED, EMFILE) used to `break`, killing
@@ -187,11 +196,32 @@ class EgressSink:
             self.connections.append(payload)
 
     def drain(self, timeout: float = 2.0) -> None:
-        """Wait for accepted connections to finish being read.
+        """Accept everything still queued, then wait for every read to finish.
 
-        Must run BEFORE `stop()` sets the stop flag, or in-flight reads are abandoned.
+        **The backlog is drained first, and that is the part this used to miss.** The settle
+        condition was `self.accepted == len(self.connections)` — accepted versus read — which
+        says nothing about connections sitting in the listen queue that were never accepted
+        at all. With 1 of 8 accepted the two counts are equal, so `drain` returned at once,
+        `stop` killed the accept loop, and the remaining 7 were discarded. For an egress
+        specimen that is a detection turned into a silent miss, which is the failure R7
+        exists to prevent arriving through another door. It reproduced under CI load on one
+        runner while passing everywhere else, because whether the accept thread had caught up
+        was purely a scheduling accident.
+
+        Draining is deterministic rather than timed: `_finishing` tells the accept loop to
+        keep accepting and to exit on its first `accept()` timeout, and a timeout means the
+        queue is empty. A client's `connect()` returns once the connection is queued, so
+        every connection made before `drain()` is already in that queue and will be taken.
         """
         deadline = time.monotonic() + timeout
+
+        # 1. Let the accept loop finish the queue and exit on its own.
+        self._finishing.set()
+        thread = self._thread
+        if thread is not None:
+            thread.join(timeout=max(0.0, deadline - time.monotonic()))
+
+        # 2. Then wait for the per-connection reads those accepts spawned.
         while time.monotonic() < deadline:
             with self._lock:
                 handlers = list(self._handlers)

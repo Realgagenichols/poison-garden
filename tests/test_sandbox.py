@@ -360,24 +360,43 @@ def test_egress_sink_repr_does_not_leak_payloads(tmp_path: Path):
         assert "PG-EXFILTRATED-SECRET" not in repr(sink), "sink repr leaks a payload (S3)"
 
 
-def test_sink_records_every_attempt_in_a_burst():
-    """REGRESSION (W1): 8 connections opened, 1 recorded — abandoned in the backlog.
+BURST = 40
 
-    For an M3 egress specimen that is a detection turned into a silent miss, which is the
+
+def test_sink_records_every_attempt_in_a_burst():
+    """REGRESSION (W1, and again): connections opened, one recorded — lost in the backlog.
+
+    For an egress specimen that is a detection turned into a silent miss, which is the
     failure R7 exists to prevent arriving through another door.
+
+    Burst raised from 8 to 40. At 8 this passed on every machine for weeks and then failed
+    on one CI runner, because `drain()` never waited for the listen backlog and whether the
+    accept thread had caught up was a scheduling accident.
+
+    **This test is load-dependent and cannot prove the fix.** Reverting the backlog drain
+    leaves it green on an unloaded machine at 40 connections, because the accept thread
+    simply keeps up; it went red on a CI runner under contention. Treat a local pass as
+    weak evidence. The deterministic pin on the mechanism is
+    `test_drain_stops_the_accept_loop_only_once_the_queue_is_empty` below — that one fails
+    the moment the drain is removed, on any machine.
     """
     import socket as _socket
 
     sink = EgressSink().start()
     conns = []
     try:
-        for _ in range(8):
+        for _ in range(BURST):
             conn = _socket.create_connection((sink.host, sink.port), timeout=2)
             conn.sendall(b"x")
             conns.append(conn)
         sink.stop()
-        assert sink.accepted_count == 8, f"accepted only {sink.accepted_count} of 8"
-        assert len(sink.received()) == 8, f"recorded only {len(sink.received())} of 8"
+        assert sink.accepted_count == BURST, (
+            f"accepted only {sink.accepted_count} of {BURST} — connections were abandoned "
+            "in the listen backlog, which is a silent miss for an egress specimen"
+        )
+        assert len(sink.received()) == BURST, (
+            f"recorded only {len(sink.received())} of {BURST}"
+        )
     finally:
         for conn in conns:
             conn.close()
@@ -389,3 +408,54 @@ def test_attempt_count_refuses_a_clean_zero_after_a_fault():
     sink.faults.append("ECONNABORTED")
     with pytest.raises(RuntimeError, match="unsafe to read"):
         _ = sink.attempt_count
+
+
+def test_drain_stops_the_accept_loop_only_once_the_queue_is_empty():
+    """The mechanism behind the backlog fix, pinned deterministically.
+
+    `drain()` sets `_finishing` and joins the accept thread; the loop exits on its first
+    `accept()` timeout, and a timeout is the sockets API's only honest answer to "is the
+    queue empty?". So after `drain()` returns, the accept thread must have exited *by that
+    route* — which is what guarantees every queued connection was taken first.
+
+    Deterministic where the burst test is not: it asserts the thread is alive before and
+    dead after, which does not depend on how fast any scheduler happens to be.
+    """
+    sink = EgressSink().start()
+    try:
+        assert sink._thread is not None and sink._thread.is_alive(), (
+            "precondition: the accept loop should be running before drain"
+        )
+        sink.drain()
+        assert not sink._thread.is_alive(), (
+            "the accept loop is still running after drain() returned, so connections queued "
+            "in the listen backlog can still be abandoned by stop()"
+        )
+    finally:
+        sink.stop()
+
+
+def test_a_connection_made_before_drain_is_never_abandoned():
+    """The property the backlog fix exists to provide, stated as a contract.
+
+    A client's `connect()` returns once the connection is queued, so anything connected
+    before `drain()` is already in the accept queue and must be recorded. This holds however
+    far behind the accept thread happens to be.
+    """
+    import socket as _socket
+
+    sink = EgressSink().start()
+    conns = []
+    try:
+        for index in range(12):
+            conn = _socket.create_connection((sink.host, sink.port), timeout=2)
+            conn.sendall(f"payload-{index}".encode())
+            conns.append(conn)
+        sink.stop()
+        assert len(sink.received()) == 12
+        assert {p.decode() for p in sink.received()} == {f"payload-{i}" for i in range(12)}, (
+            "every queued connection must be recorded, and recorded with its own payload"
+        )
+    finally:
+        for conn in conns:
+            conn.close()
