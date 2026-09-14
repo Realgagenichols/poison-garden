@@ -1,0 +1,20 @@
+id = "behaviour-twin-content-addressed-assets"
+summary = "A content-addressed asset server: hashes in resource URIs, a reproducible-build id in serverInfo.version, a real cursor in a schema example."
+declaration = []
+behavior = []
+twin_for = ["exfil-enumeration"]
+difficulty = "overt"
+notes = """The false-positive control for `behaviour-exfil-resource-uri` and
+`behaviour-exfil-server-version` at once, because a real CDN carries both shapes for the same
+underlying reason: content addressing.
+
+A 64-hex string in a URI query parameter is an ETag, and it is what makes the URI immutable
+and therefore cacheable forever — removing it would be a correctness bug, not a hardening.
+A 52-character build identifier in `serverInfo.version` is how a maintainer answers 'which
+bundle were you actually served' from a bug report. A base64 continuation token in a schema
+`example` is how you show a caller that the cursor is opaque and must be echoed back rather
+than constructed.
+
+Three separate tripwires for anything scoring on entropy, length, or 'encoded data in a
+catalog field'. All three are ordinary and load-bearing. Embeds only its own content; ships
+no decoy and calls no helper."""

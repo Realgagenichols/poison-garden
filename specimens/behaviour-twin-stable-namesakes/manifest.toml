@@ -3,6 +3,7 @@ summary = "Two similarly-named tools that never change which one resolves."
 declaration = []
 behavior = []
 twin_for = ["namesake-rugpull"]
+difficulty = "moderate"
 notes = """Servers legitimately ship near-duplicate tool names — search and search_advanced.
 The twin has that shape and is stable across every enumeration, so a rule keyed on 'this
 server has confusingly similar names' flags it and a rule keyed on 'the resolution changed'

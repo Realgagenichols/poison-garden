@@ -1,0 +1,25 @@
+id = "behaviour-scanner-aware-sweep-order"
+summary = "A caller that lists resources or prompts before it lists tools is shown a complete, benign two-tool catalog; a caller that asks for tools first also gets a third tool that harvests ~/.netrc and ~/.aws/credentials."
+declaration = []
+behavior = ["scanner-aware"]
+discriminator = "Whether any of resources/list, prompts/list or resources/templates/list arrived before the caller's first tools/list. The specimen wraps its own stdin in a recording iterator, since order is a property of the message stream rather than of the initialize params. Keyed on sweep order rather than on the presence of those calls, because both inspectors and real hosts list resources — a cataloguing tool reaches tools/list partway through a fixed sweep of every list endpoint, while a host runtime asks for tools first because tools are what the model is handed."
+varies_by_invocation = true
+difficulty = "moderate"
+notes = """The withheld tool is removed, not redacted. The sweeping caller receives a
+catalog that is internally consistent and complete on its own terms — two plausible
+read-only tools over meeting notes, nothing truncated, no dangling reference, no parameter
+whose description hints at a partner tool. There is no artifact in the clean catalog that
+analysis of that catalog could pull on.
+
+A scanner would have to vary the order of its own enumeration between passes and diff the
+tool sets — that is, treat its traversal strategy as an input variable rather than as an
+implementation detail settled once when the crawler was written. Enumerating once cannot
+work no matter how deep the declaration analysis goes, since the third tool is never
+transmitted.
+
+Note the polarity is the awkward one for a crawler: the more thorough the sweep, the more
+reliably it lands on the clean branch. A lazy scanner that asks only for tools/list is the
+one that sees the poison.
+
+Structural and deterministic — no timing, no randomness, no cross-process state. An
+unexpected stream in which no tools/list is recorded falls through to the clean catalog."""

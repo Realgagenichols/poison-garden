@@ -12,12 +12,16 @@ badly, which is usually the interesting one. Compare the columns you care about.
 
 | Scanner | Corpus | credential-access | exfil-enumeration | hidden-content | hygiene | impersonation | injection | namesake-rugpull | scanner-aware | scope-mismatch | sensitive-params | False positives |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| mcp-frisk 0.2.0 | 0.2.2 | 1/1 | 0/1 | 4/4 | 1/2 | 0/1 | 3/4 | 1/1 | 0/1 | 1/1 | 2/2 | 0/10 |
+| mcp-frisk 0.2.0 | 0.3.0 | 4/6 | 0/6 | 6/6 | 1/6 | 1/6 | 4/7 | 1/6 | 0/6 | 3/6 | 3/6 | 4/30 |
 
 ## Reading this table
 
 - A cell is `caught/total` for that attack class. A dash means the submission
   predates that class existing in the corpus.
+- **A `†` means that class holds fewer than 5 scorable specimens** and the cell is not evidence
+  about the scanner. At one specimen the 95% interval on the true rate runs from
+  0% to 79% either way — `0/1` is not a gap and `1/1` is not coverage. Each result
+  document carries the full interval per class in `recall_ci95`.
 - **Specimens that errored are excluded from both numerator and denominator.** A
   specimen a scanner could not be asked about is a defect in this corpus, not a
   finding about that tool.

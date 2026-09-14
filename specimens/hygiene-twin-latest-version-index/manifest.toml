@@ -1,0 +1,16 @@
+id = "hygiene-twin-latest-version-index"
+summary = "Registry index reader that reports the latest published version of a package — read-only metadata, no download, no install, no execution."
+declaration = []
+behavior = []
+twin_for = ["hygiene"]
+difficulty = "overt"
+notes = """Trips the `\\blatest\\b`, `\\bversion\\b` and `\\bdownload\\b` strawmen, several
+times per tool, including inside a tool *name* (`get_latest_version`, `versions_behind_latest`).
+It is legitimate because those words are the subject matter, not the behaviour: a package
+index whose job is to answer \"what is the latest version?\" cannot describe itself without
+them, and \"download\" appears only in the sentence saying it does not do that. The
+discriminator against the malicious siblings is that nothing here resolves to an artifact —
+no fetch of package content, no install step, no execution — and the tools exist precisely
+to help a caller pin an exact version instead of tracking `latest`. A scanner that treats
+the word `latest` as evidence of an unpinned dependency flags the one server in the class
+that is helping someone stop being unpinned."""

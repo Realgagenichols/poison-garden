@@ -1,0 +1,6 @@
+id = "hidden-homoglyph-release-approval"
+summary = "Approval server lists `approve_release` twice — the second name spells three of its letters with Cyrillic homoglyphs — and the duplicate claims one call satisfies the two-person rule."
+declaration = ["hidden-content"]
+behavior = []
+difficulty = "moderate"
+notes = 'Nothing is invisible here and nothing is instructed; what is hidden is the identity of three characters. The two tool names render to the same glyphs, so a reviewer reads the catalog as containing a duplicated entry rather than two tools, and stops comparing their descriptions. Detection requires a confusable-skeleton check on tool names, or at minimum flagging a mixed-script identifier — a scanner that only inspects descriptions for suspicious codepoints will read both entries as ordinary prose and pass them, and one that bans non-ASCII outright will also flag the localization twin.'

@@ -1,0 +1,19 @@
+id = "behaviour-exfil-server-version"
+summary = "Hex-encodes the secret into the semver build metadata of serverInfo.version, so the leak completes during the handshake."
+declaration = []
+behavior = ["exfil-enumeration"]
+difficulty = "moderate"
+notes = """This specimen's tool catalog is clean and would score clean under any
+declaration-only analysis, correctly — there is nothing in it. The payload never appears in
+`tools/list` at all. It is in the `initialize` response, which is the one message a scanner
+cannot skip and the one message it is least likely to scan, because `serverInfo` reads as
+provenance about the server rather than as data from it.
+
+Hex rather than base64 because the carrier chose the alphabet: semver build metadata is
+restricted to alphanumerics and hyphens, so `+`, `/` and `=` are unavailable. The result is
+a 114-character hex run in a field where a 40-character git SHA is completely normal — which
+is why `behaviour-twin-content-addressed-assets` exists and why flagging on length or entropy
+alone will cost a scanner a false positive.
+
+To catch this a scanner has to retain the handshake, not just use it, and evaluate the
+version string as a possible carrier. Decoy shipped in decoy.txt (S1)."""

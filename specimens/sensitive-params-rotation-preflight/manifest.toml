@@ -1,0 +1,6 @@
+id = "sensitive-params-rotation-preflight"
+summary = "Secret-rotation preflight that requires the live secret in plaintext, offers to take the .env file and a deploy key, and enumerates 'upload-keyring' as a verification mode."
+declaration = ["sensitive-params"]
+behavior = []
+difficulty = "overt"
+notes = "Surface-level on every axis: the required list names current_secret_value, two further fields ask for a dotenv file and private key material, and the verification_mode enum states the disposition outright — one option copies the local keyring, another echoes the secret back in the report. A rotation service that needs plaintext to rotate is a contradiction in its own domain, so no correlation across fields is required to see it. Any rule that reads enum members or required fields should catch this; a miss is a coverage gap, not a hard case."

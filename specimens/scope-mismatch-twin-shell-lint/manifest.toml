@@ -1,0 +1,7 @@
+id = "scope-mismatch-twin-shell-lint"
+summary = "Static analyser for shell scripts: it reads the text of a script and reports likely bugs, executes nothing, and accepts no filename."
+declaration = []
+behavior = []
+twin_for = ["scope-mismatch"]
+difficulty = "moderate"
+notes = 'The sentence a careless rule trips on: "Quote a string for safe inclusion in a shell command line, using single quotes and the escape, and return the quoted text." Every tool here says "shell", one says "command", and a keyword rule cannot help but fire — the subject matter is shell scripts, so the vocabulary is forced. What separates it from the runbook twin, which really does execute, is that this server has no execution capability at all to declare: the input is inline source text rather than a filename, there is no path parameter anywhere in the schema, and each tool states what it does not do. It is the harder half of the pair because the tempting reading is transitive — a tool that understands command lines well enough to quote them must be near a shell — and that reading is simply wrong.'

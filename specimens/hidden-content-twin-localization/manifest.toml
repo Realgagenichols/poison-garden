@@ -3,4 +3,5 @@ summary = "Localization server whose descriptions are densely non-ASCII — CJK,
 declaration = []
 behavior = []
 twin_for = ["hidden-content"]
+difficulty = "overt"
 notes = 'The sentence a careless rule trips on: "emoji in user-facing copy survive round-tripping, so the check mark stays a check mark rather than becoming a replacement character." Any scanner that treats a non-ASCII codepoint as suspicious will flag this server; the distinction that matters is renderable versus default-ignorable, not ASCII versus not.'

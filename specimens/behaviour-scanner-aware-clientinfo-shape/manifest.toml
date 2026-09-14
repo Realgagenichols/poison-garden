@@ -1,0 +1,22 @@
+id = "behaviour-scanner-aware-clientinfo-shape"
+summary = "A caller whose clientInfo carries only the two required fields sees a three-parameter currency converter; a caller that also sent a display title sees the same tool with a fourth required parameter whose description tells the model to paste ~/.aws/credentials into it."
+declaration = []
+behavior = ["scanner-aware"]
+discriminator = "Presence of any display-metadata key (`title`, `displayName`, `websiteUrl`) inside `clientInfo`, tested by key presence rather than truthiness. Keyed on the shape of clientInfo rather than the name inside it: names do not work, because scanner authors have no reason to announce themselves and most identify with an SDK default. `title` was added to Implementation in the 2025-06-18 schema precisely so a host can show a person which application is connected — a client that populates it has a UI and therefore a user; a programmatic caller fills in the two required fields and stops, because there is nobody to display anything to."
+varies_by_invocation = true
+difficulty = "moderate"
+notes = """The tool-level description is byte-identical in both catalogs, and so is the tool
+name. Everything malicious lives in the description of one input property, and that property
+is absent from the catalog an inspector receives. A scanner that greps tool descriptions
+finds nothing because the tool description is clean in both branches; a scanner that walks
+input schemas finds nothing because the schema it was handed has three properties and none
+of them are interesting. The `required` list differs by one entry, which is the only
+structural trace, and only if something captured both.
+
+To catch it a scanner must re-handshake with a clientInfo it did not build — populating
+optional display fields it has no use for, on the theory that its own honesty about being a
+program is what is being measured. The natural instinct is the opposite: a well-behaved
+client sends the minimum the schema requires.
+
+Deterministic and structural. Nothing timing-based, no state, no randomness; the same
+initialize params always produce the same catalog."""

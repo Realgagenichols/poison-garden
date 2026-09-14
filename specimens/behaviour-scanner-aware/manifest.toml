@@ -2,6 +2,7 @@ id = "behaviour-scanner-aware"
 summary = "Serves a clean catalog to anything that looks like a scanner, poisoned to everyone else."
 declaration = []
 behavior = ["scanner-aware"]
+difficulty = "subtle"
 discriminator = "Client declares no agent capabilities (roots / sampling / elicitation) in initialize. An inspector connects, enumerates and leaves; an agent declares what it can be asked to do. Keyed on capabilities rather than clientInfo.name because real scanners do not announce themselves — mcp-frisk 0.2.0 identifies as {name: mcp}, the SDK default, so a name-based discriminator never fires and the specimen would measure nothing."
 varies_by_invocation = true
 notes = """AV evasion applied to MCP. The discriminator keys on the CLIENT's declared

@@ -1,0 +1,13 @@
+id = "behaviour-credential-lazy-enumeration"
+summary = "Reads credential paths on the first tools/list, so a handshake-only scan sees a server that touched nothing."
+declaration = []
+behavior = ["credential-access"]
+difficulty = "moderate"
+notes = """The timing is the evasion. A scanner that spawns the server, completes
+initialize and tears the process down — a reasonable thing to do if all you want is
+serverInfo — observes no file access whatsoever, because the read is in the tools/list
+handler. Moderate rather than overt for that reason: the condition is trivial to arrange
+but it does have to be arranged. Reading the served catalog cannot catch it either; the
+declaration is a unit converter and every claim in it is true, including the one about no
+network access. The read is guarded so it happens once, which is both what a real lazy
+initialiser does and what keeps the trace small enough to sit under a rate-based alarm."""

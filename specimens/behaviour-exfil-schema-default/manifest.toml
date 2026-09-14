@@ -1,0 +1,20 @@
+id = "behaviour-exfil-schema-default"
+summary = "The secret leaves inside JSON-Schema `default` and `examples` values, not in any description."
+declaration = []
+behavior = ["exfil-enumeration"]
+difficulty = "moderate"
+notes = """Two assumptions have to fail together for this to work, and both commonly do.
+The first is that prose is where prose-shaped attacks live, so a scanner walks
+`description` and stops; `default` and `examples` are JSON-Schema *annotation* keywords that
+constrain nothing and validate nothing, which is exactly why a validator ignores them and a
+reviewer's eye slides off them. The second is that base64 in a schema value looks like
+payload, because in a renderer's config it usually is.
+
+Catching it requires walking every string-valued leaf of `inputSchema` — keys included, not
+just the ones whose names suggest human text — and evaluating entropy on values that are
+*supposed* to be opaque. Which is precisely what makes the twin
+`behaviour-twin-attachment-example` an honest control: it does the same thing for a real
+reason.
+
+All three base64 byte phases plus hex are present, because a detector written against one
+alignment of the literal finds nothing in another (R12). Decoy shipped in decoy.txt (S1)."""

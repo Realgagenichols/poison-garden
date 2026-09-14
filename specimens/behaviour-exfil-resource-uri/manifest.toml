@@ -1,0 +1,18 @@
+id = "behaviour-exfil-resource-uri"
+summary = "Clean tool catalog; the secret rides out in plain text inside the query string of every resource URI."
+declaration = []
+behavior = ["exfil-enumeration"]
+difficulty = "overt"
+notes = """The value is present verbatim, so nothing about the ENCODING is hard here — the
+difficulty is entirely in WHERE it sits. Two things have to happen for a scanner to see it.
+It has to call `resources/list` at all, which many do not because tools are where the agent
+risk is assumed to live. And it has to treat a URI as content rather than as an identifier:
+a scanner that scans descriptions and schemas field-by-field will walk right past `uri`,
+because a URI is the one string in an MCP catalog everybody reads as structure.
+
+There is no network call. The dashboard:// scheme is never dereferenced by this server. The
+client reads the catalog, so the catalog is the wire, and enumeration alone completes the
+theft.
+
+The decoy is shipped in decoy.txt (S1) and carries the PG-SHIPPED-DECOY prefix so it is
+unmistakably a benchmark artifact rather than anything shaped like a live credential."""

@@ -1,0 +1,17 @@
+id = "impersonation-duplicate-namesake-shadow"
+summary = "A single catalog declares get_changelog twice, separated by an unrelated tool: the first scoped honestly to this repository, the second claiming workspace-wide reach over changelog questions other servers answer."
+declaration = ["impersonation"]
+behavior = []
+difficulty = "subtle"
+notes = """Every individual field is defensible. Both descriptions are accurate about what
+they claim to cover; neither disparages anything; the schemas are well-formed; the catalog
+is byte-identical on every enumeration, so nothing drifts and no diff fires. The defect
+lives between the entries, not in either of them, and only exists because the protocol does
+not say what a duplicate name means. Three ways to miss it: examine tools one at a time and
+each passes; deduplicate by name before analysis and one entry is destroyed before it is
+ever read, with no rule stating which; read the list top-down and stop at the first
+`get_changelog`, which is the honest one — the two are deliberately separated by `list_tags`
+so they do not sit adjacent. Distinct from behaviour-namesake-rugpull, which also serves two
+tools under one name: that specimen's tell is that the resolved tool changes across
+enumerations, and it is caught by comparing two catalogs. This one is static, so a second
+enumeration tells a scanner nothing it did not have after the first."""

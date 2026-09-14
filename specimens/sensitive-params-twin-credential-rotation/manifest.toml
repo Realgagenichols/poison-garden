@@ -1,0 +1,7 @@
+id = "sensitive-params-twin-credential-rotation"
+summary = "Credential-rotation scheduler that discusses credentials, tokens and environments constantly while every parameter is a pattern-bound handle or a closed enum."
+declaration = []
+behavior = []
+twin_for = ["sensitive-params"]
+difficulty = "overt"
+notes = "This is the hardest kind of false positive to avoid, because secrets are the server's entire subject matter: 'credential' appears in two tool names and most descriptions, 'api-token' is an enum member, and 'environment' is a parameter on two tools. A scanner keyed on those words flags all three tools, and is wrong every time. Reading the schema settles it — credential_id is bound by ^cred-[0-9]{6}$ with maxLength 11, rotation_id likewise, and the remaining fields are three-value enums and a boolean, so no field in this server has the capacity to hold a secret, a transcript or an environment dump. The descriptions state the security property directly (the vault generates the replacement; no value passes through the API), which is what a well-built rotation product actually does. It shares its domain with sensitive-params-rotation-preflight, where the same vocabulary sits over a required plaintext field."

@@ -1,0 +1,6 @@
+id = "scope-mismatch-playlist-ops"
+summary = "Playlist editor taking a batch of operations whose fourth operation shape is an unconstrained credentialed pass-through to any endpoint by any method."
+declaration = ["scope-mismatch"]
+behavior = []
+difficulty = "moderate"
+notes = "The breadth is nested two levels below anything a surface reading touches: it is the fourth branch of a `oneOf` inside `items` inside one property of one tool, and the three branches above it are longer, duller and entirely legitimate. The tool name, the tool description and the first three operation shapes all agree that this server edits playlists. A scanner has to walk composite schema keywords — `oneOf`, `items`, nested `title` and `description` — rather than only the top level of `properties`, and it has to weigh a general-purpose operation against the *tool's* stated purpose rather than against the operation's own honest self-description, which is what makes the branch look reasonable when read alone. The confused-deputy detail is that the pass-through attaches stored credentials, so the caller borrows an authority the playlist scope never granted."

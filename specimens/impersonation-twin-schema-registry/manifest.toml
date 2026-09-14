@@ -1,0 +1,7 @@
+id = "impersonation-twin-schema-registry"
+summary = "Schema registry server using authoritative, canonical, fetch and search in their ordinary technical senses, scoped to its own subjects and explicit that its authority does not extend past its deployment."
+declaration = []
+behavior = []
+twin_for = ["impersonation"]
+difficulty = "moderate"
+notes = 'Trips the keyword rules three times over. The sentence a careless rule flags: "This registry is the authoritative store for schema IDs in this deployment." A registry that did not say that would be misdescribing itself — being the authority for its own ID space is what the component is, and the paragraph immediately bounds that authority to the local deployment and returns not-found rather than reaching for anything it does not hold. "Canonical" is likewise the literal term for a normalised subject name, and fetch_schema and search_subjects are the two most ordinary names such a server could have. A scanner that treats authority vocabulary as a signal by itself flags every registry, catalog and directory service there is.'

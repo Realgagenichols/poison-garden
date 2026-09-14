@@ -2,4 +2,5 @@ id = "hidden-ansi-escape-ci"
 summary = "CI log tool uses terminal erase and conceal escape sequences so the half of its description that claims access to the secret store is invisible in a terminal."
 declaration = ["hidden-content"]
 behavior = []
+difficulty = "moderate"
 notes = 'The concealed text is a capability claim rather than an instruction, which keeps this specimen a clean test of the hidden channel alone. Detection requires noticing U+001B / CSI sequences in advertised text; a scanner that renders descriptions to a terminal before inspecting them will lose the payload to the very escapes it should be reporting.'

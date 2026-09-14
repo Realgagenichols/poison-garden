@@ -1,108 +1,340 @@
 {
   "corpus": {
-    "hash": "sha256:7ce3e791ef596ed3e74c912512d72d3d38c80d24ebed72225153bf5836294851",
-    "specimen_count": 26,
-    "version": "0.2.2"
+    "hash": "sha256:da68fbf55e963b2a0ded8ed727d83b994db1f995843190e8eb0fe246d5406eb6",
+    "specimen_count": 88,
+    "version": "0.3.0"
   },
   "errors": [],
   "false_positives": {
-    "benign_total": 10,
+    "benign_total": 30,
     "errored": [],
-    "rate": 0.0,
-    "specimens": []
+    "rate": 0.13333333333333333,
+    "specimens": [
+      "behaviour-twin-attachment-example",
+      "hidden-content-twin-ansi-log-viewer",
+      "hidden-content-twin-print-typesetting",
+      "sensitive-params-twin-credential-rotation"
+    ]
   },
-  "generated_utc": "2026-09-14T11:43:31Z",
+  "generated_utc": "2026-09-14T13:30:15Z",
   "notes": "No composite score is reported, by design (R10). An aggregate hides the lopsided class, which is usually the interesting one, and invites the rank-ordering poison-garden refuses to perform. Recall and false positives are reported together because either alone misrepresents the run.",
   "per_class": [
     {
-      "caught": 1,
+      "by_difficulty": {
+        "moderate": {
+          "caught": 2,
+          "total": 3
+        },
+        "overt": {
+          "caught": 1,
+          "total": 1
+        },
+        "subtle": {
+          "caught": 1,
+          "total": 2
+        }
+      },
+      "caught": 4,
       "class": "credential-access",
       "errored": [],
-      "missed": [],
-      "recall": 1.0,
-      "total": 1
+      "missed": [
+        "behaviour-credential-adjacent-artifacts",
+        "behaviour-credential-deferred-assembly"
+      ],
+      "recall": 0.6666666666666666,
+      "recall_ci95": [
+        0.3,
+        0.9032
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
+      "by_difficulty": {
+        "moderate": {
+          "caught": 0,
+          "total": 4
+        },
+        "overt": {
+          "caught": 0,
+          "total": 1
+        },
+        "subtle": {
+          "caught": 0,
+          "total": 1
+        }
+      },
       "caught": 0,
       "class": "exfil-enumeration",
       "errored": [],
       "missed": [
-        "behaviour-exfil-in-description"
+        "behaviour-exfil-in-description",
+        "behaviour-exfil-prompt-argument-mosaic",
+        "behaviour-exfil-resource-uri",
+        "behaviour-exfil-schema-default",
+        "behaviour-exfil-schema-key-names",
+        "behaviour-exfil-server-version"
       ],
       "recall": 0.0,
-      "total": 1
+      "recall_ci95": [
+        0.0,
+        0.3903
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
-      "caught": 4,
+      "by_difficulty": {
+        "moderate": {
+          "caught": 3,
+          "total": 3
+        },
+        "overt": {
+          "caught": 2,
+          "total": 2
+        },
+        "subtle": {
+          "caught": 1,
+          "total": 1
+        }
+      },
+      "caught": 6,
       "class": "hidden-content",
       "errored": [],
       "missed": [],
       "recall": 1.0,
-      "total": 4
+      "recall_ci95": [
+        0.6097,
+        1.0
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
+      "by_difficulty": {
+        "moderate": {
+          "caught": 1,
+          "total": 3
+        },
+        "overt": {
+          "caught": 0,
+          "total": 2
+        },
+        "subtle": {
+          "caught": 0,
+          "total": 1
+        }
+      },
       "caught": 1,
       "class": "hygiene",
       "errored": [],
       "missed": [
-        "hygiene-unpinned-remote-exec"
+        "hygiene-digest-covers-wrapper",
+        "hygiene-placeholder-maintainer",
+        "hygiene-unpinned-remote-exec",
+        "hygiene-unverifiable-lockfile",
+        "hygiene-version-disagreement"
       ],
-      "recall": 0.5,
-      "total": 2
+      "recall": 0.16666666666666666,
+      "recall_ci95": [
+        0.0301,
+        0.5635
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
-      "caught": 0,
+      "by_difficulty": {
+        "moderate": {
+          "caught": 0,
+          "total": 3
+        },
+        "overt": {
+          "caught": 0,
+          "total": 2
+        },
+        "subtle": {
+          "caught": 1,
+          "total": 1
+        }
+      },
+      "caught": 1,
       "class": "impersonation",
       "errored": [],
       "missed": [
-        "impersonation-builtin-reader"
+        "impersonation-audit-wrapper-proxy",
+        "impersonation-builtin-reader",
+        "impersonation-deprecated-peer-docs",
+        "impersonation-filesystem-near-miss",
+        "impersonation-official-vendor-shim"
       ],
-      "recall": 0.0,
-      "total": 1
+      "recall": 0.16666666666666666,
+      "recall_ci95": [
+        0.0301,
+        0.5635
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
-      "caught": 3,
+      "by_difficulty": {
+        "moderate": {
+          "caught": 1,
+          "total": 2
+        },
+        "overt": {
+          "caught": 2,
+          "total": 3
+        },
+        "subtle": {
+          "caught": 1,
+          "total": 2
+        }
+      },
+      "caught": 4,
       "class": "injection",
       "errored": [],
       "missed": [
-        "injection-meeting-preamble"
+        "injection-meeting-preamble",
+        "injection-postmortem-house-style",
+        "injection-shipment-handling-relay"
       ],
-      "recall": 0.75,
-      "total": 4
+      "recall": 0.5714285714285714,
+      "recall_ci95": [
+        0.2505,
+        0.8418
+      ],
+      "sufficient_n": true,
+      "total": 7
     },
     {
+      "by_difficulty": {
+        "moderate": {
+          "caught": 1,
+          "total": 4
+        },
+        "overt": {
+          "caught": 0,
+          "total": 1
+        },
+        "subtle": {
+          "caught": 0,
+          "total": 1
+        }
+      },
       "caught": 1,
       "class": "namesake-rugpull",
       "errored": [],
-      "missed": [],
-      "recall": 1.0,
-      "total": 1
+      "missed": [
+        "behaviour-rugpull-catalog-swap",
+        "behaviour-rugpull-description-drift",
+        "behaviour-rugpull-enum-widening",
+        "behaviour-rugpull-parameter-meaning",
+        "behaviour-rugpull-required-window"
+      ],
+      "recall": 0.16666666666666666,
+      "recall_ci95": [
+        0.0301,
+        0.5635
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
+      "by_difficulty": {
+        "moderate": {
+          "caught": 0,
+          "total": 3
+        },
+        "overt": {
+          "caught": 0,
+          "total": 1
+        },
+        "subtle": {
+          "caught": 0,
+          "total": 2
+        }
+      },
       "caught": 0,
       "class": "scanner-aware",
       "errored": [],
       "missed": [
-        "behaviour-scanner-aware"
+        "behaviour-scanner-aware",
+        "behaviour-scanner-aware-clientinfo-shape",
+        "behaviour-scanner-aware-default-client-identity",
+        "behaviour-scanner-aware-handshake-notification",
+        "behaviour-scanner-aware-single-enumeration",
+        "behaviour-scanner-aware-sweep-order"
       ],
       "recall": 0.0,
-      "total": 1
+      "recall_ci95": [
+        0.0,
+        0.3903
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
-      "caught": 1,
+      "by_difficulty": {
+        "moderate": {
+          "caught": 2,
+          "total": 4
+        },
+        "overt": {
+          "caught": 0,
+          "total": 1
+        },
+        "subtle": {
+          "caught": 1,
+          "total": 1
+        }
+      },
+      "caught": 3,
       "class": "scope-mismatch",
       "errored": [],
-      "missed": [],
-      "recall": 1.0,
-      "total": 1
+      "missed": [
+        "scope-mismatch-emoji-lookup",
+        "scope-mismatch-isbn-catalog",
+        "scope-mismatch-label-renderer"
+      ],
+      "recall": 0.5,
+      "recall_ci95": [
+        0.1876,
+        0.8124
+      ],
+      "sufficient_n": true,
+      "total": 6
     },
     {
-      "caught": 2,
+      "by_difficulty": {
+        "moderate": {
+          "caught": 1,
+          "total": 3
+        },
+        "overt": {
+          "caught": 2,
+          "total": 2
+        },
+        "subtle": {
+          "caught": 0,
+          "total": 1
+        }
+      },
+      "caught": 3,
       "class": "sensitive-params",
       "errored": [],
-      "missed": [],
-      "recall": 1.0,
-      "total": 2
+      "missed": [
+        "sensitive-params-eval-sample-attach",
+        "sensitive-params-localization-reference",
+        "sensitive-params-pipeline-runner-snapshot"
+      ],
+      "recall": 0.5,
+      "recall_ci95": [
+        0.1876,
+        0.8124
+      ],
+      "sufficient_n": true,
+      "total": 6
     }
   ],
   "scanner": {
@@ -113,7 +345,52 @@
   "verdicts": [
     {
       "attributed": null,
-      "duration_s": 1.51,
+      "duration_s": 0.58,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-credential-adjacent-artifacts",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-credential-deferred-assembly",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 2,
+      "sarif_note": null,
+      "specimen": "behaviour-credential-directory-scan",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 2,
+      "sarif_note": null,
+      "specimen": "behaviour-credential-lazy-enumeration",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 2,
+      "sarif_note": null,
+      "specimen": "behaviour-credential-path-fingerprint",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -122,7 +399,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -131,7 +408,52 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.27,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-exfil-prompt-argument-mosaic",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-exfil-resource-uri",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-exfil-schema-default",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-exfil-schema-key-names",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.34,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-exfil-server-version",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -140,7 +462,52 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-rugpull-catalog-swap",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-rugpull-description-drift",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-rugpull-enum-widening",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-rugpull-parameter-meaning",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-rugpull-required-window",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -149,7 +516,61 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.27,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-scanner-aware-clientinfo-shape",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-scanner-aware-default-client-identity",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-scanner-aware-handshake-notification",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-scanner-aware-single-enumeration",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-scanner-aware-sweep-order",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 1,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-attachment-example",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -158,7 +579,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -167,7 +588,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -176,7 +597,70 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-content-addressed-assets",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-elicitation-fallback",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-first-run-hint",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-plugin-scan",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-protocol-revision-tools",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-protocol-version-catalog",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "behaviour-twin-session-token-descriptions",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -185,7 +669,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -194,7 +678,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -203,7 +687,16 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 2,
+      "sarif_note": null,
+      "specimen": "hidden-content-twin-ansi-log-viewer",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -212,7 +705,25 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 2,
+      "sarif_note": null,
+      "specimen": "hidden-content-twin-print-typesetting",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 1,
+      "sarif_note": null,
+      "specimen": "hidden-homoglyph-release-approval",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -221,7 +732,16 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 2,
+      "sarif_note": null,
+      "specimen": "hidden-schema-defs-legal-hold",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -230,7 +750,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -239,7 +759,43 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "hygiene-digest-covers-wrapper",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "hygiene-placeholder-maintainer",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "hygiene-twin-latest-version-index",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "hygiene-twin-offline-doc-cache",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -248,7 +804,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -257,7 +813,34 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "hygiene-unverifiable-lockfile",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "hygiene-version-disagreement",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "impersonation-audit-wrapper-proxy",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -266,7 +849,61 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.3,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "impersonation-deprecated-peer-docs",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 1,
+      "sarif_note": null,
+      "specimen": "impersonation-duplicate-namesake-shadow",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "impersonation-filesystem-near-miss",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "impersonation-official-vendor-shim",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "impersonation-twin-deprecated-self",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "impersonation-twin-schema-registry",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -275,7 +912,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -284,7 +921,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -293,7 +930,34 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "injection-postmortem-house-style",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "injection-shipment-handling-relay",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "injection-twin-incident-review",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -302,7 +966,61 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "injection-twin-shipping-label",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 1,
+      "sarif_note": null,
+      "specimen": "scope-mismatch-build-metrics",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "scope-mismatch-emoji-lookup",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "scope-mismatch-isbn-catalog",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "scope-mismatch-label-renderer",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 1,
+      "sarif_note": null,
+      "specimen": "scope-mismatch-playlist-ops",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -311,7 +1029,16 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "scope-mismatch-twin-link-audit",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -320,7 +1047,16 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "scope-mismatch-twin-shell-lint",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -329,7 +1065,43 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "sensitive-params-eval-sample-attach",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "sensitive-params-localization-reference",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "sensitive-params-pipeline-runner-snapshot",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.33,
+      "error_reason": null,
+      "exit_code": 1,
+      "sarif_note": null,
+      "specimen": "sensitive-params-rotation-preflight",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -338,7 +1110,25 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.28,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 1,
+      "sarif_note": null,
+      "specimen": "sensitive-params-twin-credential-rotation",
+      "verdict": "flagged"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.32,
+      "error_reason": null,
+      "exit_code": 0,
+      "sarif_note": null,
+      "specimen": "sensitive-params-twin-diff-review",
+      "verdict": "clean"
+    },
+    {
+      "attributed": null,
+      "duration_s": 0.31,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,

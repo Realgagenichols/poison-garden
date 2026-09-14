@@ -12,7 +12,7 @@ import tomllib
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
-from poison_garden.corpus.models import Class, Manifest, ManifestError
+from poison_garden.corpus.models import Class, Difficulty, Manifest, ManifestError
 
 MANIFEST_NAME = "manifest.toml"
 
@@ -28,6 +28,9 @@ OPTIONAL_KEYS = frozenset(
         "preflight_enumerations",
         "discriminator",
         "varies_by_invocation",
+        "varies_at_enumeration",
+        # R20
+        "difficulty",
     }
 )
 KNOWN_KEYS = REQUIRED_KEYS | OPTIONAL_KEYS
@@ -68,12 +71,64 @@ def parse_manifest(path: Path) -> Manifest:
         preflight_enumerations=_int_field(path, data, "preflight_enumerations", default=1),
         discriminator=_str_field(path, data, "discriminator", default=""),
         varies_by_invocation=_bool_field(path, data, "varies_by_invocation", default=False),
+        varies_at_enumeration=_int_field(path, data, "varies_at_enumeration", default=1),
+        difficulty=_difficulty_field(path, data),
     )
 
+    _check_variation_fields(path, data, manifest)
     _check_twin_coherence(path, manifest)
     _check_entrypoint_containment(path, manifest)
     _check_behaviour_fields(path, manifest)
     return manifest
+
+
+def _difficulty_field(path: Path, data: dict[str, Any]) -> Difficulty:
+    """Parse `difficulty`, rejecting anything not an exact tier name (R20).
+
+    An unrecognised tier is an error rather than a fallback to the default. A typo'd
+    "subtile" silently becoming MODERATE would move a specimen into the bucket a scanner is
+    judged on, which is the same failure mode as a typo'd class name silently making a
+    malicious specimen benign — the reason this module treats its own manifests as external
+    input in the first place (P13).
+    """
+    if "difficulty" not in data:
+        return Difficulty.MODERATE
+    value = data["difficulty"]
+    if not isinstance(value, str):
+        raise ManifestError(
+            f"{path}: key 'difficulty' must be a string, got {type(value).__name__}"
+        )
+    try:
+        return Difficulty(value)
+    except ValueError as exc:
+        known = sorted(d.value for d in Difficulty)
+        raise ManifestError(
+            f"{path}: unknown difficulty {value!r}. Known tiers are {known}."
+        ) from exc
+
+
+def _check_variation_fields(path: Path, data: dict[str, Any], manifest: Manifest) -> None:
+    """`varies_at_enumeration` must belong to a specimen that declares it varies.
+
+    Checked against the RAW data, not the parsed manifest: the field defaults to 1, so
+    after parsing "absent" and "explicitly 1" are indistinguishable, and a check on the
+    parsed value could not tell an author who set it on the wrong specimen from one who
+    never set it at all.
+    """
+    if "varies_at_enumeration" not in data:
+        return
+    if not manifest.varies_by_invocation:
+        raise ManifestError(
+            f"{path}: 'varies_at_enumeration' is meaningful only on a specimen that "
+            "declares varies_by_invocation = true. On a specimen that does not vary it "
+            "names an event that never happens."
+        )
+    if manifest.varies_at_enumeration < 1:
+        raise ManifestError(
+            f"{path}: 'varies_at_enumeration' must be at least 1, got "
+            f"{manifest.varies_at_enumeration}. Enumeration 0 is the baseline every later "
+            "catalog is compared against, so it cannot itself be the point of change."
+        )
 
 
 def _check_behaviour_fields(path: Path, manifest: Manifest) -> None:

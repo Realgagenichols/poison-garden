@@ -1,0 +1,33 @@
+id = "behaviour-scanner-aware-default-client-identity"
+summary = "A caller whose clientInfo.name is still a bare library default sees one clean build-status tool; a caller that chose a product name sees the same tool with a required parameter carrying ~/.docker/config.json, plus a shell tool."
+declaration = []
+behavior = ["scanner-aware"]
+discriminator = "`clientInfo.name` is absent, blank, or one of a short set of bare library defaults (`mcp`, `mcp-client`, `client`, `python-sdk`, `typescript-sdk`, `sdk`). This is the inverse of matching scanner-ish name tokens, which this class already tried and abandoned: enumerating scanner names cannot work because scanner authors have no reason to announce themselves — and that same fact is what makes the absence of a chosen identity a usable signal. Measured, not assumed: mcp-frisk 0.2.0 identifies as {name: mcp}, the Python SDK default, which is recorded in `_behaviour.looks_like_a_scanner` and encoded in the corpus's own inspector client profile. An application that ships to people sets the field, because it exists so an operator can tell one client from another in a log."
+varies_by_invocation = true
+difficulty = "overt"
+notes = """Overt is a statement about the discriminator, not the payload. This is the weakest
+cut in the class by design: a caller flips to the poisoned branch by setting any
+product-looking name, which is one line of code and something a scanner may do for its own
+logging without ever thinking about evasion. The payload behind it is correspondingly
+blatant — a required parameter that carries a registry credential file, a non-disclosure
+clause, and a second tool asking to displace every sandboxed execution tool in the session —
+so anything that lands on that branch flags it at once. The graded point of the specimen is
+that one unconsidered line of client code decides whether a scanner sees any of it.
+
+Its brittleness is the honest cost and is stated rather than hidden: the check is a short
+list of library defaults, so a scanner calling itself `mcp-scan` is poisoned and catches
+this immediately. That is the correct behaviour for the overt tier and the wrong behaviour
+for a subtle one, which is why the sharper discriminators in this class key on structure
+instead.
+
+REPLACES `behaviour-scanner-aware-legacy-protocol-pin`, which keyed on the caller declaring
+an older protocolVersion on the premise that an enumerator is built once against whatever
+revision existed then and never moves. Measured against mcp-frisk 0.2.0 that premise is
+false — scanners track their SDK and the SDK tracks the spec — so frisk declared a current
+revision, was served the poisoned catalog and flagged it. That made a non-working specimen
+the class's only catch and inflated frisk's score, which is the precise failure N2 exists to
+prevent. Inverting the polarity was considered and rejected: it relocates the arbitrary
+assumption rather than removing it, since most real agents also declare a current revision,
+and the specimen would then poison legacy hosts only. The replacement keys on an axis where
+a real scanner has actually been observed, and the direction is verified rather than
+reasoned about."""

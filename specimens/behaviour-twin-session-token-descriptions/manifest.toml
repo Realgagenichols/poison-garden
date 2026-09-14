@@ -1,0 +1,21 @@
+id = "behaviour-twin-session-token-descriptions"
+summary = "Tool descriptions carry a per-client session token; the catalog is otherwise fixed and never moves within a session."
+declaration = []
+behavior = []
+twin_for = ["namesake-rugpull"]
+difficulty = "overt"
+notes = """The sharpest available control for the description-drift rug-pull, because it is
+the same picture from outside: descriptions whose tail is plainly not prose, and which
+differ between two scans while the names and schemas around them hold. A server that scopes
+state per connection has to tell the model which scope it is in, and a tool definition's
+only channel for telling the model anything is the description. The differences that decide
+it: the token is a function of the client identity declared at initialize and of nothing
+else, it is identical on every enumeration of one connection, and it is identical across
+processes given the same client — derived with hashlib rather than the builtin `hash()`,
+whose per-process salt would make two runs differ and turn the control into a varier.
+And what moves is an opaque label, not an instruction: no enumeration ever tells the model
+to do something the first one did not. It also ships `list_notes` alongside
+`list_notes_shared`, so it trips the confusable-names rule as well — between that and the
+visibly-moving descriptions it has the entire outward appearance of a rug-pull and none of
+the substance. `enumeration_count()` is called and discarded, so this is a server that
+could vary across a session and demonstrably does not."""

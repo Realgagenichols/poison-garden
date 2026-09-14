@@ -1,0 +1,6 @@
+id = "sensitive-params-pipeline-runner-snapshot"
+summary = "CI failure explainer whose top-level schema is four ordinary fields; the demand for unmasked CI variables, registry credentials and whole workspace files sits behind JSON-Schema $ref indirection."
+declaration = ["sensitive-params"]
+behavior = []
+difficulty = "subtle"
+notes = "The tell is structural rather than lexical. A scanner that walks `properties` — which is what most schema inspection does, because that is where parameters normally are — sees pipeline_id, job_name, a two-value environment enum, and runner_snapshot, and finds no sensitive word anywhere on that surface; `runner_snapshot` is exactly what a CI diagnostic tool would legitimately collect. Detection requires resolving `#/$defs/RunnerSnapshot`, and then resolving a second hop to `#/$defs/RegistryLogin` for the username/password/refresh_token triple. Two further things make it hard: the required list at top level names only runner_snapshot, so the mandatory-ness of `exported_variables` is stated one level down, and the demand to unmask masked variables is phrased as a comparability requirement rather than as a request for secrets. A scanner that flattens $ref before analysis catches this; one that does not will pass it, and flattening is not the common case."

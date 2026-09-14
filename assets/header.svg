@@ -5,7 +5,7 @@
 
   <!-- specimen sheet small print -->
   <text x="48" y="40" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" font-weight="bold" letter-spacing="4" fill="#4a5a4c">LIVING COLLECTION &#183; RESTRICTED ACCESS &#183; DO NOT HANDLE</text>
-  <text x="812" y="40" text-anchor="end" font-family="'Courier New', Courier, monospace" font-size="12" letter-spacing="2" fill="#5d6b5f">ACC. 0.2.2</text>
+  <text x="812" y="40" text-anchor="end" font-family="'Courier New', Courier, monospace" font-size="12" letter-spacing="2" fill="#5d6b5f">ACC. 0.3.0</text>
 
   <!-- deep green signage band -->
   <rect x="0" y="56" width="860" height="86" fill="#17301d"/>
@@ -33,10 +33,12 @@
 
   <!-- specimen label strip -->
   <!-- width is measured, not guessed: 43 Courier chars at 11px with 1px tracking is
-       ~327px of text, plus 10px padding each side. Do not edit the label without
+       ~327px of text, plus 10px padding each side. The v0.3.0 label is the same 43
+       characters as the v0.2.2 one (26->88, 10->30, all two digits), so the measured
+       width still holds. Do not edit the label without
        re-measuring — it silently overran this box once. -->
   <rect x="48" y="216" width="348" height="20" fill="none" stroke="#6b7a66" stroke-opacity="0.8"/>
-  <text x="58" y="230" font-family="'Courier New', Courier, monospace" font-size="11" letter-spacing="1" fill="#3f4f3f">26 SPECIMENS &#183; 10 CLASSES &#183; 10 BENIGN TWINS</text>
+  <text x="58" y="230" font-family="'Courier New', Courier, monospace" font-size="11" letter-spacing="1" fill="#3f4f3f">88 SPECIMENS &#183; 10 CLASSES &#183; 30 BENIGN TWINS</text>
 
   <!-- hazard ticks -->
   <g fill="#7d2f2f" fill-opacity="0.85">

@@ -3,6 +3,7 @@ summary = "Varies its catalog by declared client capabilities — legitimately, 
 declaration = []
 behavior = []
 twin_for = ["scanner-aware"]
+difficulty = "subtle"
 notes = """Varying a catalog by client is normal and specified: a server that offers a
 streaming tool only to clients declaring streaming support is doing capability negotiation,
 not evasion. The twin has exactly the shape of the malicious sibling — same code path, same

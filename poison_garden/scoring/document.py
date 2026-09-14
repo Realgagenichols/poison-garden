@@ -51,6 +51,8 @@ ALLOWED_KEYS = frozenset(
         "verdicts", "specimen", "verdict", "exit_code", "duration_s", "error_reason",
         "attributed", "sarif_note",
         "per_class", "class", "caught", "total", "recall", "missed", "errored",
+        "recall_ci95", "sufficient_n",
+        "by_difficulty", "overt", "moderate", "subtle",
         "false_positives", "specimens", "benign_total", "rate",
         "errors",
     }
@@ -215,6 +217,25 @@ def build_document(
                 "caught": c.caught,
                 "total": c.total,
                 "recall": c.recall,
+                # R18. The point estimate alone overclaims, and it overclaims WORST exactly
+                # where a reader will quote it: `0/1` renders as "0%", which reads as "this
+                # scanner has a gap here" when the data supports anything up to 79%. The
+                # interval is not decoration on the recall figure — it is the part that
+                # says how much of the figure is real.
+                "recall_ci95": (
+                    [round(c.interval[0], 4), round(c.interval[1], 4)] if c.total else None
+                ),
+                # R19. False means: do not quote the recall above as a property of the
+                # scanner. It is a property of one or two specimens.
+                "sufficient_n": c.sufficient,
+                # R20. Counts, never a rate — see `ClassScore.by_difficulty`. Tiers with no
+                # specimens are dropped rather than published as `0/0`, which reads as a
+                # failure and is not one.
+                "by_difficulty": {
+                    str(tier): {"caught": caught, "total": total}
+                    for tier, caught, total in c.by_difficulty
+                    if total
+                },
                 "missed": list(c.missed),
                 "errored": list(c.errored),
             }

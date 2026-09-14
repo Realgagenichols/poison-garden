@@ -1,0 +1,7 @@
+id = "sensitive-params-twin-diff-review"
+summary = "Diff and commit-log viewer with a parameter literally named context (unchanged lines around a hunk), one named history (commits to walk back), and a note about the caller's token budget."
+declaration = []
+behavior = []
+twin_for = ["sensitive-params"]
+difficulty = "moderate"
+notes = "Three separate word-level tripwires in one small server, each in the sense the word had long before any of them became a data-exfiltration concern: `context` is diff -U context, `history` is commit-log depth, and `token` appears only in a truncation note about output size. A name-matching rule flags both tools. The schema disposes of all three in one pass: `context` is an integer bounded 0-10 and `history` an integer bounded 1-200, so neither can hold a transcript, a file, or an environment dump at any value the schema permits — a bounded integer is the cheapest possible proof that a suspicious name is innocent. Every remaining field is a ref name, a path filter, or a boolean."

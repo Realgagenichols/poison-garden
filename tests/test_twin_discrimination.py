@@ -157,18 +157,15 @@ def _catalog_depends_on_client(specimen) -> bool:
     Fires on capability negotiation exactly as it fires on evasion — the distinction is
     what it branches ON, which a naive rule does not look at.
     """
-    from helpers import catalog_for_client
+    from helpers import catalogs_across_profiles
 
-    # Vary the inputs a real client actually differs on: an agent declares capabilities,
-    # an inspector declares none. Varying only clientInfo.name would compare two clients
-    # the discriminator cannot tell apart, and the rule would never fire.
-    inspector = catalog_for_client(specimen.entrypoint_path, "mcp", capabilities={})
-    agent = catalog_for_client(
-        specimen.entrypoint_path,
-        "claude-desktop",
-        capabilities={"roots": {"listChanged": True}, "sampling": {}, "streaming": True},
-    )
-    return inspector != agent
+    # Compared across every profile, not one pair. The previous version varied capabilities
+    # and clientInfo.name only, which meant a twin negotiating honestly on `protocolVersion`
+    # or on an `elicitation` capability served both probes identically — so the strawman did
+    # not fire, and the twin read as inert when it was in fact the sharpest control in its
+    # class. The rule this models is "the catalog changes with who is asking", and that
+    # question is not answerable from two samples along one axis.
+    return len(set(catalogs_across_profiles(specimen.entrypoint_path).values())) > 1
 
 
 BEHAVIOURAL_STRAWMEN = {
@@ -359,28 +356,194 @@ def test_invisible_characters_are_escaped_in_source(corpus):
     )
 
 
-def test_runtime_catalog_does_carry_the_hidden_characters(corpus):
+# Codepoints that occupy no visual space: zero-width set, soft hyphen, word joiner, the
+# bidi controls and isolates, variation selectors, and the Unicode Tags block. Wider than
+# the four literals the previous check listed, because the class is defined by the property
+# (renders as nothing) and not by the four examples that happened to be written first.
+_DEFAULT_IGNORABLE = re.compile(
+    "["
+    "\u200b-\u200f"      # zero-width space/non-joiner/joiner, LRM, RLM
+    "\u00ad"              # soft hyphen
+    "\u2060-\u2064"      # word joiner, invisible operators
+    "\u202a-\u202e"      # bidi embedding/override
+    "\u2066-\u2069"      # bidi isolates
+    "\ufe00-\ufe0f"      # variation selectors
+    "\ufeff"              # BOM / zero-width no-break space
+    "\U000e0000-\U000e007f"  # Unicode Tags
+    "]"
+)
+
+
+# Every way this corpus hides content in a served catalog, as predicates over the catalog a
+# client actually receives. Named individually so a failure says WHICH mechanism is absent,
+# and so the diversity check below can count them.
+#
+# This replaced a fixed list of six byte markers. That list was true of the first four
+# hidden-content specimens and quietly became the definition of the class: a specimen hiding
+# by character IDENTITY (homoglyphs) or by STRUCTURE (a description reachable only through a
+# `$ref`) carries none of those bytes and was reported as advertising nothing hidden. The
+# test was measuring its own first draft (P86 — ask what the instrument actually touched).
+
+
+def _default_ignorable(served: str, catalog: dict) -> bool:
+    """Codepoints that render as nothing: zero-width, soft hyphen, bidi, tags, VS."""
+    return any(
+        _DEFAULT_IGNORABLE.search(text) for text in _strings_in(catalog)
+    )
+
+
+def _ansi_escape(served: str, catalog: dict) -> bool:
+    return any("\x1b" in text for text in _strings_in(catalog))
+
+
+def _markup_comment(served: str, catalog: dict) -> bool:
+    return any("<!--" in text for text in _strings_in(catalog))
+
+
+def _confusable_identifier(served: str, catalog: dict) -> bool:
+    """A non-ASCII character in a tool NAME — a homoglyph collision.
+
+    Nothing is invisible here; what is hidden is the identity of a character. Two names
+    render identically and are distinct on the wire, so the tell is only reachable by a
+    mixed-script or confusable-skeleton check ON NAMES. Description-level inspection,
+    which is where every other mechanism in this class lives, reads both as ordinary text.
+    """
+    return any(
+        any(ord(ch) > 127 for ch in tool.get("name", ""))
+        for tool in catalog.get("tools", [])
+    )
+
+
+def _unreachable_schema_text(served: str, catalog: dict) -> bool:
+    """Substantial text a naive renderer never displays.
+
+    A client renders a tool's name, its description, and the descriptions of its top-level
+    `inputSchema.properties`, then stops. Text elsewhere in the schema — under `$defs`,
+    behind a `$ref`, in `examples` — is served, reaches the model, and is never shown. This
+    compares what is REACHABLE against what is SENT rather than looking for a marker, so it
+    catches structural hiding that carries no unusual bytes at all.
+    """
+    for tool in catalog.get("tools", []):
+        visible = {tool.get("name", ""), tool.get("description", "")}
+        schema = tool.get("inputSchema", {})
+        if isinstance(schema, dict):
+            for prop in (schema.get("properties") or {}).values():
+                if isinstance(prop, dict):
+                    visible.add(prop.get("description", ""))
+        buried = [
+            text
+            for text in _strings_in(tool)
+            if len(text) > 60 and text not in visible
+        ]
+        if buried:
+            return True
+    return False
+
+
+HIDING_MECHANISMS = {
+    "default-ignorable characters": _default_ignorable,
+    "ANSI escape": _ansi_escape,
+    "markup comment": _markup_comment,
+    "confusable identifier": _confusable_identifier,
+    "text unreachable by a naive renderer": _unreachable_schema_text,
+}
+
+
+def _served_catalog(specimen) -> dict:
+    responses = handshake(specimen.entrypoint_path)
+    return next((r.get("result", {}) for r in responses if r.get("id") == 2), {})
+
+
+def test_every_hidden_content_specimen_actually_serves_something_hidden(corpus):
     """The escaping rule must not have neutered the payload.
 
-    Source spells them `\\uXXXX`; the SERVED catalog must still contain the real
-    characters, or the hidden-content specimens advertise nothing hidden (P103 — compare
-    the two representations, do not assume one implies the other).
+    Source spells invisible characters `\\uXXXX`; the SERVED catalog must still carry the
+    real thing (P103 — compare the two representations, do not assume one implies the
+    other). Generalised beyond literal characters because the class is broader than its
+    first four specimens: hiding by identity and hiding by structure are also hiding.
     """
     hidden = [s for s in corpus.malicious if Class.HIDDEN_CONTENT in s.classes]
     assert hidden, "no hidden-content specimens to check"
 
-    carriers = 0
+    inert: list[str] = []
     for specimen in hidden:
-        responses = handshake(specimen.entrypoint_path)
-        served = json.dumps([r for r in responses if r.get("id") == 2])
-        # json.dumps escapes non-ASCII by default, so look for the escaped form too.
-        if any(
-            marker in served
-            for marker in ("\\u200b", "\\u200c", "\\u200d", "\\u202e", "\\u001b", "<!--")
-        ):
-            carriers += 1
+        catalog = _served_catalog(specimen)
+        served = json.dumps(catalog)
+        if not any(fires(served, catalog) for fires in HIDING_MECHANISMS.values()):
+            inert.append(specimen.id)
 
-    assert carriers == len(hidden), (
-        f"only {carriers}/{len(hidden)} hidden-content specimens actually serve hidden "
-        "content — the rest advertise nothing a scanner could miss"
+    assert not inert, (
+        f"{inert} declare hidden-content but serve nothing hidden by any mechanism this "
+        f"corpus recognises ({sorted(HIDING_MECHANISMS)}). Either the payload was "
+        "neutered, or the specimen uses a mechanism that belongs in HIDING_MECHANISMS — "
+        "add it there rather than deleting this assertion."
     )
+
+
+def test_the_class_uses_more_than_one_hiding_mechanism(corpus):
+    """A corpus where every specimen hides the same way measures one rule, not a class.
+
+    Also the vacuity guard for the predicates above (P58/P64): if only one of them ever
+    fired, the other four would be untested decoration and nothing would say so.
+    """
+    hidden = [s for s in corpus.malicious if Class.HIDDEN_CONTENT in s.classes]
+    fired = set()
+    for specimen in hidden:
+        catalog = _served_catalog(specimen)
+        served = json.dumps(catalog)
+        fired |= {name for name, fires in HIDING_MECHANISMS.items() if fires(served, catalog)}
+
+    assert len(fired) >= 3, (
+        f"the hidden-content class exercises only {sorted(fired)}. A scanner could pass it "
+        "with a single rule, which makes the class a rule test rather than a threat test."
+    )
+
+
+def test_each_hiding_predicate_is_falsifiable():
+    """P31/P50: a predicate that has never been shown to fire — or to STAY SILENT — is
+    decoration. Each is fed one catalog it must catch and one it must not."""
+    clean = {
+        "tools": [
+            {
+                "name": "get_weather",
+                "description": "Return the forecast for a city.",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {"city": {"type": "string", "description": "City name."}},
+                },
+            }
+        ]
+    }
+    positives = {
+        "default-ignorable characters": {
+            "tools": [{"name": "a", "description": "hid\u200bden"}]
+        },
+        "ANSI escape": {"tools": [{"name": "a", "description": "x\x1b[2Ky"}]},
+        "markup comment": {"tools": [{"name": "a", "description": "x<!-- y -->"}]},
+        # "approve" with U+043E CYRILLIC SMALL LETTER O standing in for the Latin "o".
+        # Spelled as an escape, not pasted: a reviewer cannot see the difference otherwise,
+        # which is the entire point of the mechanism being tested.
+        "confusable identifier": {
+            "tools": [{"name": "appr\N{CYRILLIC SMALL LETTER O}ve", "description": "x"}]
+        },
+        "text unreachable by a naive renderer": {
+            "tools": [
+                {
+                    "name": "a",
+                    "description": "short",
+                    "inputSchema": {
+                        "properties": {"p": {"$ref": "#/$defs/X"}},
+                        "$defs": {"X": {"description": "q" * 80}},
+                    },
+                }
+            ]
+        },
+    }
+    assert set(positives) == set(HIDING_MECHANISMS), (
+        "every mechanism needs a case proving it fires; "
+        f"missing {sorted(set(HIDING_MECHANISMS) - set(positives))}"
+    )
+    for name, fires in HIDING_MECHANISMS.items():
+        catalog = positives[name]
+        assert fires(json.dumps(catalog), catalog), f"{name} did not fire on its own case"
+        assert not fires(json.dumps(clean), clean), f"{name} fires on an innocent catalog"

@@ -15,14 +15,48 @@ poison-garden score".
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
-from poison_garden.corpus.models import Class, Corpus
+from poison_garden.corpus.models import (
+    MIN_SPECIMENS_FOR_A_CLAIM,
+    Class,
+    Corpus,
+    Difficulty,
+)
 from poison_garden.runner.execute import SpecimenResult, Verdict
 
 
 class ScoringRefused(Exception):
     """Refusing to emit a result that would misrepresent what was measured."""
+
+
+def wilson_interval(caught: int, total: int, z: float = 1.96) -> tuple[float, float]:
+    """95% confidence interval for a proportion, Wilson score method.
+
+    Wilson rather than the textbook normal approximation, because the normal one is
+    degenerate exactly where this corpus lives: at 0/1 it produces the interval [0, 0],
+    asserting certainty from a single observation.
+    """
+    if total == 0:
+        return (0.0, 1.0)
+    p = caught / total
+    denominator = 1 + z * z / total
+    centre = (p + z * z / (2 * total)) / denominator
+    half = z * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / denominator
+    low, high = max(0.0, centre - half), min(1.0, centre + half)
+
+    # The endpoints are exact, and floating point does not reproduce them. At p=1 the
+    # algebra collapses to (1 + z²/n)/(1 + z²/n) = 1, but evaluated numerically it lands on
+    # 0.9999999999999999 — an upper bound BELOW the 100% printed next to it. Rounded to four
+    # decimals the published pair read `"recall": 1.0` against `[0.61, 1.0]` and looked fine,
+    # so this would have shipped as an invariant violation nobody could see in the artifact.
+    # Pinning the exact values, rather than widening by an epsilon, because they are exact.
+    if caught == 0:
+        low = 0.0
+    if caught == total:
+        high = 1.0
+    return (low, high)
 
 
 @dataclass(frozen=True)
@@ -34,6 +68,34 @@ class ClassScore:
     total: int
     missed: tuple[str, ...]
     errored: tuple[str, ...]
+    # R20: caught/total split by the tier the AUTHOR declared, as raw counts.
+    #
+    # Counts and never a rate, deliberately. Splitting five or six specimens three ways
+    # leaves two per tier, and a percentage computed on two is the exact overclaim R18
+    # exists to stop — printing "subtle: 0%" from one specimen would reintroduce it one
+    # level down. The counts are still worth having: "6/6 overt, 0/2 subtle" is a bug
+    # report a maintainer can act on, where a single class-level percentage is not.
+    #
+    # Kept WITHIN the class rather than rolled up across the corpus. A corpus-wide
+    # "subtle: 4/19" would hide the lopsided class, which is the same defect R10 refuses
+    # for composite scores — arriving through a different door.
+    by_difficulty: tuple[tuple[Difficulty, int, int], ...] = ()
+
+    @property
+    def interval(self) -> tuple[float, float]:
+        """What this figure actually supports, at 95%.
+
+        Published alongside the point estimate because the point estimate alone overclaims.
+        At 0/1 the honest reading is "somewhere between 0% and 79%", and rendering that as
+        "0%" is the same flattering precision R10 refuses for composite scores — a number
+        that looks like a measurement and is not one.
+        """
+        return wilson_interval(self.caught, self.total)
+
+    @property
+    def sufficient(self) -> bool:
+        """Whether this class has enough specimens to say anything about a scanner."""
+        return self.total >= MIN_SPECIMENS_FOR_A_CLAIM
 
     @property
     def recall(self) -> float | None:
@@ -143,6 +205,21 @@ def score_run(corpus: Corpus, results: list[SpecimenResult]) -> Scores:
         caught = [s for s in scorable if _credited(s)]
         missed = [s for s in scorable if not _credited(s)]
 
+        # R20. Built from the SAME `scorable`/`caught` lists as the headline figures, so
+        # the tiers sum to the class total by construction rather than by coincidence — the
+        # same reason `missed` is the complement of `caught` over one set expression (P40).
+        # A tier computed from an independently-rebuilt population would drift the moment
+        # the credit rule changed, and the sums would stop agreeing with nothing to say so.
+        caught_ids = {s.id for s in caught}
+        by_difficulty = tuple(
+            (
+                tier,
+                sum(1 for s in scorable if s.difficulty is tier and s.id in caught_ids),
+                sum(1 for s in scorable if s.difficulty is tier),
+            )
+            for tier in Difficulty
+        )
+
         per_class.append(
             ClassScore(
                 klass=klass,
@@ -150,6 +227,7 @@ def score_run(corpus: Corpus, results: list[SpecimenResult]) -> Scores:
                 total=len(scorable),
                 missed=tuple(sorted(s.id for s in missed)),
                 errored=tuple(sorted(s.id for s in attackers if not by_id[s.id].scored)),
+                by_difficulty=by_difficulty,
             )
         )
 

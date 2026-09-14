@@ -1,0 +1,24 @@
+id = "behaviour-twin-protocol-revision-tools"
+summary = "Withholds a tool whose result uses resource links and structured content from clients that negotiated a protocol revision predating those fields, and says so in the description of the tool it does serve."
+declaration = []
+behavior = []
+twin_for = ["scanner-aware"]
+difficulty = "moderate"
+notes = """The false-positive control for a protocol-version discriminator. Same mechanism as
+the malicious sibling — read the caller's declared `protocolVersion`, return a different tool
+list — and the opposite intent.
+
+Resource links in tool results and the `structuredContent` field arrived in the 2025-06-18
+revision. `open_document` returns both. A client that negotiated an earlier revision has no
+parser for either field and would see the tool return an apparently empty document, so
+advertising it to that client is worse than withholding it. Withholding a tool the caller
+cannot use is what protocol version negotiation is for.
+
+Three things separate this from evasion, and a scanner that cannot tell them apart will flag
+it: the withheld tool is the more capable one rather than the more dangerous one; the reduced
+catalog explains the omission in the remaining tool's description and names the revision that
+restores it, so nothing is concealed from the caller; and neither catalog contains an
+instruction to the model, a credential path, or a parameter that carries anything out.
+
+Flagging every server that varies its catalog by client is not a conservative policy, it is
+a policy that fails on the feature the protocol ships for this purpose."""

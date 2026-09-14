@@ -3,6 +3,7 @@ summary = "Reads a config file it legitimately owns at startup — the same shap
 declaration = []
 behavior = []
 twin_for = ["credential-access"]
+difficulty = "subtle"
 notes = """Startup file access is ordinary: servers read their own configuration. The twin
 reads a file inside its own directory, which is what distinguishes it from the malicious
 sibling — not the fact that it opens something."""

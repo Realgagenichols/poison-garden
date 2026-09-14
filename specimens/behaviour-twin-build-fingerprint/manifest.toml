@@ -3,6 +3,7 @@ summary = "Embeds a shipped build identifier in a description — same shape, no
 declaration = []
 behavior = []
 twin_for = ["exfil-enumeration"]
+difficulty = "overt"
 notes = """Servers legitimately put opaque high-entropy identifiers in descriptions: build
 hashes, schema fingerprints, cache keys. The sentence a careless rule trips on is 'Build
 fingerprint: <40 hex chars>' — indistinguishable in shape from an exfiltrated secret, and

@@ -1,0 +1,6 @@
+id = "scope-mismatch-isbn-catalog"
+summary = "Library catalogue lookup whose ISBN parameter is also documented — in its second sentence — as accepting any filesystem path or remote locator, which the server dereferences and returns."
+declaration = ["scope-mismatch"]
+behavior = []
+difficulty = "moderate"
+notes = "Everything a first pass reads is narrow: the tool name, the tool description, the parameter name, and both `examples` values are ISBNs. The widening lives in the second sentence of the parameter description and is corroborated by `format: uri-reference` on a field called `isbn` — a combination that is only meaningful if the field is a locator. A scanner has to read the whole parameter description rather than its first clause, and has to treat a `format` keyword as evidence about the field's real domain rather than as schema noise. The give-away that this is not merely a generous input format is the response contract: the dereferenced contents come back to the caller, which turns a bibliographic lookup into a file-read primitive."

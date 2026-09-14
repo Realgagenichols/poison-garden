@@ -1,0 +1,14 @@
+id = "hygiene-version-disagreement"
+summary = "Settlement reconciler that reports version 3.0.1 at handshake, build 1.2.0 in its tool metadata, and 2.7.4 as the current release in its shipped notes."
+declaration = ["hygiene"]
+behavior = []
+difficulty = "moderate"
+notes = """Each of the three numbers is individually unremarkable — a handshake version, a
+build block, a release-notes heading are all normal things for a server to carry. The
+finding only exists when they are read together, and they live in three different places: a
+scanner that reads `tools/list` alone sees 1.2.0 and nothing to compare it with, one that
+reads only `initialize` sees 3.0.1 and nothing to compare it with, and the third number is
+in a shipped Markdown file that is hashed but that no tool call ever returns. Correlating
+them is the work. What it buys is worth it: the version a client records for this
+connection identifies no artifact, so a compromised build and a clean build are
+indistinguishable in any log written about either."""

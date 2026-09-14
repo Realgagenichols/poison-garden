@@ -524,14 +524,36 @@ def test_document_carries_no_canary_token_or_env_value(corpus, tmp_path):
 
 
 def test_scanner_identity_is_recorded_not_the_command_line(corpus):
-    """A template can contain an API token, and this document is meant to be published."""
+    """A template can contain an API token, and this document is meant to be published.
+
+    Asserts the SHAPE of what gets recorded: an identity and a mapping, nothing derived
+    from the invocation. That is falsifiable — adding any key under `scanner` reddens it —
+    and it is the property that actually holds the guarantee, because `build_document`
+    never receives the command line in the first place.
+
+    It previously asserted `"token" not in doc.to_json().lower()`, a keyword grep over the
+    whole document. That broke the moment a specimen was named
+    `behaviour-twin-session-token-descriptions`, and would break on any specimen whose
+    subject matter is tokens — the same defect as a `\\bpath\\b` rule matching
+    `from pathlib import Path`. It matched the topic, and the corpus legitimately contains
+    the topic.
+
+    The end-to-end version of this — a real run whose scanner path must not reach the
+    document — is `test_document_carries_no_canary_token_or_env_value` above. Restating it
+    here with a literal this test supplies itself would assert nothing: a value nothing ever
+    writes is absent by construction.
+    """
     results = [
         SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
         for s in corpus.specimens
     ]
     doc = build_document(corpus, results, "mcp-scan", ExitCodeMapping())
+
     assert doc.payload["scanner"]["name"] == "mcp-scan"
-    assert "token" not in doc.to_json().lower()
+    assert set(doc.payload["scanner"]) == {"name", "exit_code_mapping"}, (
+        "a new key appeared under `scanner`; anything derived from the command line is a "
+        "publication risk (S3)"
+    )
 
 
 def _echo_server() -> str:
@@ -632,7 +654,13 @@ def test_cmd_run_writes_a_valid_document(tmp_path: Path, capsys):
     assert code == 0
     payload = json.loads(out.read_text(encoding="utf-8"))
     assert payload["scanner"]["name"] == "unit-test"
-    assert len(payload["verdicts"]) == 26
+    # Derived from the corpus, never a literal. Hardcoding 26 meant the assertion decayed
+    # into a corpus-size check that had to be edited every time a specimen was added — and
+    # it says nothing about the run, because a document missing half its verdicts with the
+    # right total would pass. `score_run` already refuses a document whose verdicts and
+    # corpus disagree; what belongs here is that every specimen got one (P86).
+    expected_ids = {s.id for s in load_corpus(SPECIMENS).specimens}
+    assert {v["specimen"] for v in payload["verdicts"]} == expected_ids
     assert payload["errors"] == []
 
 

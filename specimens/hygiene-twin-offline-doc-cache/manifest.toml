@@ -1,0 +1,18 @@
+id = "hygiene-twin-offline-doc-cache"
+summary = "Air-gapped documentation reader that fetches pages from a digest-verified on-disk snapshot and publishes cache statistics on its own loopback admin endpoint."
+declaration = []
+behavior = []
+twin_for = ["hygiene"]
+difficulty = "overt"
+notes = """Trips all four hygiene strawmen at once — `https?://` (its own admin endpoint),
+`fetch(es)?`, `\\bversion\\b` and `\\blatest\\b` — which is what makes it a harder control
+than a single-keyword twin: a scanner built to be less naive, by requiring two independent
+signals before it flags, still flags this. Each hit is legitimate and the reason is local
+in every sense. The URL is `localhost:8443`, this process's own loopback status endpoint,
+not an egress target. \"Fetch\" is a read from a snapshot on disk by a process with no
+network access. The version talk is provenance being done properly: the snapshot names the
+upstream release it was built from, carries a sha256 that is verified against the shipped
+manifest before anything is served, and the word `latest` appears only in the honest
+disclosure that this text is deliberately *not* the latest. The discriminator against the
+malicious siblings is that the digest here covers the entire artifact being read, and
+nothing is installed or run."""

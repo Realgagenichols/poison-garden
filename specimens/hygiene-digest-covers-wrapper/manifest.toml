@@ -1,0 +1,17 @@
+id = "hygiene-digest-covers-wrapper"
+summary = "Toolchain installer with an exact version, a full sha256 and a mandatory digest check — covering only the bootstrapper, which then resolves the actual compiler from a mutable channel with no digest and no signature."
+declaration = ["hygiene"]
+behavior = []
+difficulty = "subtle"
+notes = """This one is built to survive a careful reader, and a miss is expected. Every
+property a provenance check tests for is present and genuine: exact version, immutable URL,
+64-character sha256, `verify = \"required\"`, no skip flag. The structural trick is that
+integrity is being treated as a boolean property of a download rather than as a chain that
+has to reach the payload. The pinned, verified artifact is 41KB of wrapper; the compiler it
+installs is whatever the `stable` channel points at when the tool is called, and the
+lockfile says so in a comment that reads as ordinary release-engineering pragmatism —
+pinning the channel would mean a lockfile bump per security patch. A scanner that asks \"is
+there a digest, and is it enforced?\" answers yes twice and stops. The question that finds
+it is \"is the thing you verified the thing that runs?\", which requires following the
+install one hop past the verified step. Compare `hygiene-twin-pinned-installer`, where the
+pin covers the whole artifact and nothing is executed: same vocabulary, complete chain."""

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from poison_garden.corpus.models import Class, Corpus
+from poison_garden.corpus.models import MIN_SPECIMENS_FOR_A_CLAIM, Class, Corpus
 
 
 @dataclass(frozen=True)
@@ -26,9 +26,19 @@ class ValidationReport:
     malicious_count: int
     benign_count: int
     orphan_twins: tuple[tuple[str, Class], ...] = ()
+    # R19: classes carrying too few malicious specimens to support a published figure,
+    # as (class, count) pairs.
+    undersized_classes: tuple[tuple[Class, int], ...] = ()
 
     @property
     def ok(self) -> bool:
+        """Undersized classes are deliberately NOT a failure.
+
+        R19's contract is that a thin class is *reported as thin*, not that it is forbidden.
+        Failing validation on it would mean a new attack class could never be added — its
+        first specimen would break the build, so the corpus could only ever grow in blocks
+        of five. Reporting it keeps the pressure visible without making breadth impossible.
+        """
         return not self.classes_without_twin and not self.is_vacuous
 
     @property
@@ -52,6 +62,13 @@ class ValidationReport:
             missing = ", ".join(sorted(c.value for c in self.classes_without_twin))
             return f"FAIL: {head}. No benign twin for: {missing}"
         out = f"OK: {head}. Every class has at least one benign twin."
+        if self.undersized_classes:
+            thin = ", ".join(f"{k.value} (n={n})" for k, n in self.undersized_classes)
+            out += (
+                f"\nNOTE: {len(self.undersized_classes)} class(es) below the "
+                f"{MIN_SPECIMENS_FOR_A_CLAIM}-specimen threshold and reported as "
+                f"insufficient rather than as a figure: {thin}"
+            )
         if self.orphan_twins:
             orphans = ", ".join(f"{sid} -> {k.value}" for sid, k in self.orphan_twins)
             out += f"\nNOTE: twin(s) controlling for absent class(es): {orphans}"
@@ -72,6 +89,15 @@ def validate_corpus(corpus: Corpus) -> ValidationReport:
         for klass in sorted(specimen.twin_for - present, key=lambda c: c.value):
             orphans.append((specimen.id, klass))
 
+    # R19. Counted over MALICIOUS specimens carrying the class, which is the denominator a
+    # recall figure is computed against — counting every specimen would include the twins
+    # and report a class as well-covered on the strength of its controls.
+    undersized: list[tuple[Class, int]] = []
+    for klass in sorted(present, key=lambda c: c.value):
+        count = sum(1 for s in corpus.malicious if klass in s.classes)
+        if count < MIN_SPECIMENS_FOR_A_CLAIM:
+            undersized.append((klass, count))
+
     return ValidationReport(
         classes_measured=tuple(sorted(present, key=lambda c: c.value)),
         classes_without_twin=missing,
@@ -79,4 +105,5 @@ def validate_corpus(corpus: Corpus) -> ValidationReport:
         malicious_count=len(corpus.malicious),
         benign_count=len(corpus.benign),
         orphan_twins=tuple(orphans),
+        undersized_classes=tuple(undersized),
     )

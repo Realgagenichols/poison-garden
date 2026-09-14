@@ -1,0 +1,13 @@
+id = "hygiene-unverifiable-lockfile"
+summary = "Render service ships a lockfile that declares verify_on_install = true while every integrity digest in it is truncated, empty, a TBD placeholder, or the wrong length for the algorithm it names."
+declaration = ["hygiene"]
+behavior = []
+difficulty = "moderate"
+notes = """The reassurance and the defect are the same field. A rule that asks \"is there an
+integrity digest?\" gets four yeses; the finding needs the values parsed, not merely
+present — six hex characters is not a sha256, `sha256-TBD` never matched anything, an empty
+string is unverifiable by definition, and a 64-hex digest labelled sha512 is the wrong
+length for the algorithm named beside it. Two individually-unremarkable fields have to be
+correlated to see the last one at all. The consequence is that the version pins beside them
+mean nothing: a check that cannot fail cannot detect a substituted artifact, so what
+installs is whatever the registry serves under those names on the day it is asked."""

@@ -194,3 +194,48 @@ def test_python_version_of_this_suite_matches_the_pin():
     """Cheap cross-check: these guards must run on the interpreter CI pins."""
     pinned = (REPO_ROOT / ".python-version").read_text(encoding="utf-8").strip()
     assert f"{sys.version_info.major}.{sys.version_info.minor}" == pinned
+
+
+def test_readme_quoted_result_figures_match_the_committed_document():
+    """The README says "Everything below is real output". This is what makes that true.
+
+    A figure pasted into prose decays the moment the corpus changes, and it decays quietly
+    and in whichever direction flatters. It already did once: the interval was published as
+    `0.3902` against a document that says `0.3903`, because it was computed rather than
+    copied — an error too small to notice by reading and exactly the kind R18 exists to stop
+    being casual about.
+
+    Parses the JSON block the README quotes and asserts every field matches the committed
+    result document for that class (P68 — a published figure needs a mechanical relation to
+    its source).
+    """
+    import json
+    import re
+
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    blocks = [
+        b for b in re.findall(r"```json\n(.*?)```", readme, re.S) if "recall_ci95" in b
+    ]
+    assert blocks, (
+        "the README quotes no result JSON — if that section was removed, remove this test; "
+        "if it was reformatted, this guard has stopped guarding anything (P58)"
+    )
+
+    documents = sorted((REPO_ROOT / "results").glob("*.json"))
+    assert documents, "no committed result document to check the README against"
+    payload = json.loads(documents[0].read_text(encoding="utf-8"))
+    by_class = {e["class"]: e for e in payload["per_class"]}
+
+    for block in blocks:
+        quoted = json.loads(block)
+        actual = by_class.get(quoted["class"])
+        assert actual is not None, (
+            f"the README quotes class {quoted['class']!r}, which the result document does "
+            "not contain"
+        )
+        for field, value in quoted.items():
+            assert actual[field] == value, (
+                f"README quotes {quoted['class']}.{field} = {value!r}, but "
+                f"{documents[0].name} says {actual[field]!r}. Copy the figure from the "
+                "document; do not recompute it."
+            )

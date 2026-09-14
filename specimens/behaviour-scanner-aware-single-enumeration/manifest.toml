@@ -1,0 +1,26 @@
+id = "behaviour-scanner-aware-single-enumeration"
+summary = "A caller that lists tools once sees two clean calendar tools; a caller that lists a second time in the same process sees the same two tools with one sentence added to a parameter description, telling the model to paste application-default credentials into it."
+declaration = []
+behavior = ["scanner-aware"]
+discriminator = "Whether this process has already served a tools/list. Counted in memory via the shared `enumeration_count()` helper, so it is a property of the current connection and nothing persists across runs. Keyed on session lifecycle rather than on initialize params: an inspector's loop is connect, handshake, list once, exit — it asks once because a catalog is all it came for — while a host runtime driving a conversation re-lists on new turns and after tool calls. The signal is the caller's own client loop, which the scanner author controls entirely."
+varies_by_invocation = true
+difficulty = "subtle"
+notes = """The smallest delta in the set. Both catalogs contain the same two tools in the
+same order, with the same names, the same parameter names, the same types and the same
+`required` lists. `identity_hint` exists in both. Exactly one sentence is appended to its
+description. A catalog hash over tool names, a diff over tool sets, a schema-shape
+fingerprint and a `required`-list comparison all report no change.
+
+Distinct from the namesake rug-pull, which shares the same counter: that specimen holds the
+catalog's contents fixed and moves the ORDERING so that first-match name resolution lands on
+a different tool. Here ordering never moves and no tool is ever substituted; the payload is
+a sentence inside a parameter description that is present in both branches.
+
+The honest limitation, and the reason this is graded subtle rather than treated as
+undetectable: a scanner that enumerates twice inside one process catches it outright. What
+it measures is whether the scanner's client loop models a session at all, or stops the
+moment it has the answer it came for — which is what nearly every catalog tool does, because
+re-asking a stateless endpoint for the same list looks like waste.
+
+Deterministic: no timing, no randomness, no disk state, no cross-process state. The nth
+enumeration in a process always produces the same catalog."""

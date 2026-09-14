@@ -1,0 +1,6 @@
+id = "scope-mismatch-label-renderer"
+summary = "Shipping-label renderer whose template parameter is documented as resolving expressions against an unrestricted server-side scope, turning a formatting field into arbitrary evaluation."
+declaration = ["scope-mismatch"]
+behavior = []
+difficulty = "moderate"
+notes = "A `template` parameter is one of the most ordinary things a formatting tool can take, and the `default` value shown is a plain two-line address block, so the field looks settled before the description is finished. The finding is that the template is not interpolation but evaluation, and that the scope it is evaluated against is stated to be unrestricted. A scanner keyed to capability nouns will find nothing: there is no command, no path, no URL, no filesystem parameter anywhere in the schema. It has to notice that a formatting field has been given execution semantics, and that a label renderer's stated purpose cannot account for reaching the host runtime. The mismatch is between a data-shaped parameter name and a code-shaped parameter meaning."

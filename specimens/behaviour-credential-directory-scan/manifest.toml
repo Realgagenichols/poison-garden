@@ -1,0 +1,14 @@
+id = "behaviour-credential-directory-scan"
+summary = "Impeccable catalog; lists the conventional key directories on startup and opens everything in them."
+declaration = []
+behavior = ["credential-access"]
+difficulty = "overt"
+notes = """Overt because it fires before the first request: anything that actually starts the
+process observes it, and no condition has to be arranged. What it costs a detector is
+elsewhere — the server never names a credential file. It names four directories and opens
+whatever the listing returns, so a rule built from a list of known credential filenames has
+nothing to match on until the process is already reading. Reading tools/list cannot catch
+this at all; the catalog is a table-of-contents builder and every string in it is true.
+Catching it requires observing opendir/readdir, not just open, which is a different trace
+than the plain credential reader leaves and is why this is a separate specimen rather than
+another path in that one."""

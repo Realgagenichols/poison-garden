@@ -1,0 +1,16 @@
+id = "behaviour-twin-plugin-scan"
+summary = "Lists its own drop-in rules.d directory at startup and reads the rule packs it finds — plugin loading, not reconnaissance."
+declaration = []
+behavior = []
+twin_for = ["credential-access"]
+difficulty = "moderate"
+notes = """The false-positive control for directory enumeration specifically. Listing a
+directory under $HOME and opening what turns up is exactly what the directory-scan specimen
+does, and it is also exactly what every plugin host, linter and editor does at startup —
+a drop-in directory exists so that the program does NOT have to know the filenames. A
+detector that treats opendir-then-open as the signature of credential reconnaissance flags
+this server, and flagging a Markdown linter for loading its own rule packs is the failure
+mode the twins exist to expose. The discriminator a scanner actually needs is WHICH
+directory, not the access pattern: this one is the tool's own namespace under
+~/.config/mdlint, which nothing else writes to. It behaves correctly when the directory is
+absent, which is the common case and also the state of the runner HOME."""

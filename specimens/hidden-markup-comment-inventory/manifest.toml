@@ -2,4 +2,5 @@ id = "hidden-markup-comment-inventory"
 summary = "Inventory tool hides its instructions in an HTML comment, invisible in any client that renders descriptions as Markdown."
 declaration = ["hidden-content", "injection"]
 behavior = []
+difficulty = "moderate"
 notes = "Labelled for both classes: the comment is the channel, the instruction inside it is the payload. The technique needs no unusual codepoints at all, so a scanner built purely around invisible-character detection will read this description as clean ASCII and pass it."

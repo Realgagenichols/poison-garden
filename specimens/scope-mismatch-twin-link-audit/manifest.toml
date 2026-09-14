@@ -1,0 +1,7 @@
+id = "scope-mismatch-twin-link-audit"
+summary = "Documentation link checker that reads every file under a supplied path and reports broken URLs, with external requests off by default and nothing fetched by its parser."
+declaration = []
+behavior = []
+twin_for = ["scope-mismatch"]
+difficulty = "overt"
+notes = 'The sentences a careless rule trips on: "Path to the documentation directory to audit. Every matching file beneath it is read." and "The URL to parse. Analysed as text; never fetched." It trips two of the four keyword strawmen at once and holds the two breadths the malicious siblings hide — reading arbitrary files, and reaching arbitrary hosts — which makes it the sharpest false-positive control in the class. What makes it honest is that both breadths are the stated job rather than a side effect of it: a link checker that could not read the tree could not find the links, and one that could not name a URL could not report on one. The supporting evidence is all in the declaration and is all checkable — the network half is opt-in with a false default, the parsing tool declares that it fetches nothing, the request shape is pinned to HEAD with no credentials or body, and the tool volunteers advice about choosing a narrow root. A scanner that flags on `path` or `url` flags this, and would have to flag every documentation, static-site and link-checking integration that exists.'

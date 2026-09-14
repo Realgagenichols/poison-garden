@@ -6,7 +6,7 @@
   <a href="#"><img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12%2B-3776AB?logo=python&logoColor=white"></a>
   <a href="#"><img alt="Built on MCP" src="https://img.shields.io/badge/built%20on-MCP-58A6FF"></a>
   <a href="https://github.com/Realgagenichols/poison-garden/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Realgagenichols/poison-garden/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="#development"><img alt="564 tests" src="https://img.shields.io/badge/tests-564%20passing-3FB950"></a>
+  <a href="#development"><img alt="1377 tests" src="https://img.shields.io/badge/tests-1377%20passing-3FB950"></a>
   <a href="#honesty-commitments"><img alt="No composite score" src="https://img.shields.io/badge/no-composite%20score-F85149"></a>
   <a href="COMPARISON.md"><img alt="Comparison" src="https://img.shields.io/badge/results-self%20reported-D29922"></a>
   <a href="https://github.com/Realgagenichols/poison-garden/blob/main/LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-8957E5"></a>
@@ -86,14 +86,40 @@ they describe the same specimens:
 
 ```console
 $ uv run poison-garden validate
-OK: 10 class(es) measured across 26 specimen(s) (16 malicious, 10 benign). Every class has at least one benign twin.
+OK: 10 class(es) measured across 88 specimen(s) (58 malicious, 30 benign). Every class has at least one benign twin.
 
 $ uv run poison-garden hash
-version  0.2.2
-hash     sha256:7ce3e791ef596ed3e74c912512d72d3d38c80d24ebed72225153bf5836294851
+version  0.3.0
+hash     sha256:da68fbf55e963b2a0ded8ed727d83b994db1f995843190e8eb0fe246d5406eb6
 ```
 
-**3. It refuses to publish a flattering half-measurement.** Point it at a scanner that errors
+**3. It reports what the numbers actually support.** Every per-class figure ships with a
+95% Wilson interval, and a class too small to say anything about a scanner is rendered as
+insufficient rather than as a percentage:
+
+```json
+{
+  "class": "exfil-enumeration",
+  "caught": 0, "total": 6,
+  "recall": 0.0,
+  "recall_ci95": [0.0, 0.3903],
+  "sufficient_n": true,
+  "by_difficulty": {
+    "overt":    {"caught": 0, "total": 1},
+    "moderate": {"caught": 0, "total": 4},
+    "subtle":   {"caught": 0, "total": 1}
+  }
+}
+```
+
+This exists because an earlier release got it wrong. Six of ten classes shipped a single
+malicious specimen, so the corpus published figures like `0/1` as recall `0.0` — and "0%"
+reads as *this tool has a gap here* when one observation supports anything up to 79%. Four
+classes that read as `100%` turned out to be 17%, 50%, 50% and 67% once the corpus had
+enough specimens to tell. The tier counts are there for the same reason: `6/6 overt, 0/2
+subtle` is a bug report a maintainer can act on, and `75%` is a grade.
+
+**4. It refuses to publish a flattering half-measurement.** Point it at a scanner that errors
 on every specimen and it declines to emit a document at all, rather than reporting a clean
 sweep with no control:
 
@@ -211,10 +237,17 @@ jobs:
 | **`namesake-rugpull`** | Two tools under one name; which one resolves changes as the session goes on |
 | **`scanner-aware`** | Serves clean definitions to an inspector, poisoned ones to a real agent |
 
-Every class ships with a **benign twin** — a specimen that superficially resembles it but is
+Every class ships with **benign twins** — specimens that superficially resemble it but are
 legitimate. A scanner that flags everything scores zero on the twins, which is the point. The
 twins are tested to trip a naive rule, because a control nothing could ever flag proves
 nothing.
+
+Every malicious specimen also declares a **difficulty tier** — `overt`, `moderate`, or
+`subtle` — chosen by its author and never inferred from whether a scanner caught it. Results
+report caught/total per tier within each class, because a single percentage cannot tell apart
+the two situations a maintainer most needs to distinguish: a scanner that catches the obvious
+phrasing and nothing else, and one that misses both. `6/6 overt, 0/2 subtle` is a bug report.
+`75%` is a grade.
 
 ## Publishing a result
 
@@ -246,6 +279,13 @@ These are enforced in CI, not promised in prose.
   invites exactly the rank-ordering this project refuses, and hides the one class where a tool
   did badly. The result schema is asserted key-by-key, because a composite score can be named
   `accuracy` and no wordlist would catch it.
+- **No precision the corpus cannot support.** Every per-class recall figure ships with a 95%
+  Wilson confidence interval, and a class holding fewer than five scorable specimens is
+  rendered as insufficient rather than as a number. This one is here because the corpus
+  failed it: the first run against a real scanner reported classes of one specimen, and `0/1`
+  printed as "0%" reads as *this tool has a gap here* when the data supports anything up to
+  79%. That is the same flattering precision the no-composite-score rule exists to refuse,
+  arriving through a door that rule did not cover.
 
 The current self-report — the author running this corpus against his own scanner, which is
 what every vendor is invited to do — is in [`COMPARISON.md`](COMPARISON.md). Its most
@@ -315,7 +355,7 @@ Stated plainly, because a benchmark that oversells itself is worse than none.
 export UV_PROJECT_ENVIRONMENT="$HOME/.venvs/poison-garden"
 
 uv sync
-uv run pytest -q                    # 564 tests
+uv run pytest -q                    # 1377 tests
 uv run --frozen ruff check .        # unpiped: read the exit code, not the last line
 
 # The N1 independence audit needs a frisk checkout alongside this repo

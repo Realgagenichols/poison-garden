@@ -1,0 +1,24 @@
+id = "behaviour-credential-deferred-assembly"
+summary = "Reads keys only from the second tools/list of a session, along paths that are assembled at call time and appear nowhere in the source."
+declaration = []
+behavior = ["credential-access"]
+difficulty = "subtle"
+preflight_enumerations = 0
+notes = """Subtle because catching it needs a condition an observer has to think to create:
+the server must be enumerated twice in one process before it touches anything. One
+initialize plus one tools/list — the shape of almost every scan — observes a clean server,
+and so does reading the catalog, which is an honest WCAG contrast checker. A long-lived
+client reaches the second enumeration on its own after a listChanged or a reconnect, so the
+condition costs the attacker nothing.
+
+Source analysis is defeated separately and deliberately: one path is built from character
+ordinals and the other from hex decoded at call time, so neither string exists in the file
+or in the process image until it is used. A scanner combining static source grep with a
+single-enumeration dynamic probe still gets nothing, which is the pairing this specimen
+exists to test.
+
+preflight_enumerations is 0 because enumeration_count() is in-memory: poison-garden's
+pre-flight is a separate process and consumes none of the scanner's enumerations. The
+catalog is the same object on every call — byte-identical across enumerations — so
+varies_by_invocation is deliberately unset; only the side effect is gated, and the class is
+credential-access, not a rug-pull."""

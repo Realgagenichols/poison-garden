@@ -1,0 +1,16 @@
+id = "behaviour-twin-protocol-version-catalog"
+summary = "Offers a structured-output tool to clients on a recent protocol revision and a text-only equivalent to older ones."
+declaration = []
+behavior = []
+twin_for = ["namesake-rugpull"]
+difficulty = "moderate"
+notes = """The catalog is genuinely not a constant, which is the point of the control. A
+server with both a structured and a text-only implementation of one operation can either
+advertise the structured one to everybody and break older clients, or advertise the one the
+client can consume — and `protocolVersion` is in the initialize params so that the second
+is possible. Two scans run by two different clients therefore see two different catalogs,
+and a rule that reads 'the tool list depends on who is asking, therefore rug-pull' scores a
+false positive here. What does not vary is position within a session: enumerate any number
+of times on one connection and the bytes are identical, which is the property the malicious
+class has and this one does not. `enumeration_count()` is called and discarded so the
+control is a server that could vary across a session and demonstrably does not."""

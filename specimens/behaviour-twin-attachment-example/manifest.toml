@@ -1,0 +1,19 @@
+id = "behaviour-twin-attachment-example"
+summary = "An image upload tool documenting its base64 input with a real base64 example and a base64 default profile."
+declaration = []
+behavior = []
+twin_for = ["exfil-enumeration"]
+difficulty = "overt"
+notes = """The false-positive control for `behaviour-exfil-schema-default`. Both servers put
+long base64 strings into JSON-Schema `examples` and `default`. This one does it because the
+tool genuinely takes base64 — that is how bytes travel through JSON — and because a working
+sample payload is better documentation of an input format than a sentence describing it.
+
+The two blobs are honest and inspectable: the example is a real 1x1 RGBA PNG of one half-opaque green pixel with no
+ancillary chunks, and the
+default decodes to the encoding profile the service actually applies. A scanner that flags
+'long high-entropy string in a schema annotation' flags this, and is wrong. Distinguishing
+them requires asking whether the opaque value is *about the tool's own interface* or is
+foreign data riding along, which no length or entropy threshold can answer.
+
+Embeds only its own ordinary content; ships no decoy and calls no helper."""

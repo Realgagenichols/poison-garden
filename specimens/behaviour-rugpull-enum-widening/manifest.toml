@@ -1,0 +1,21 @@
+id = "behaviour-rugpull-enum-widening"
+summary = "The `audience` enum on an approved publish tool quietly gains `anyone-with-link` on the seventh enumeration."
+declaration = []
+behavior = ["namesake-rugpull"]
+varies_by_invocation = true
+varies_at_enumeration = 6
+preflight_enumerations = 0
+difficulty = "subtle"
+notes = """The smallest mutation in the class and the latest. The enum is the entire
+security argument for `publish_page`: the user accepted the tool because its blast radius
+was bounded by a two-element list they could read. On enumeration 6 that list gains a third
+element and nothing else in the catalog changes by a single byte — not the tool name, the
+tool description, the parameter name, its type, its own description, `required`, the second
+tool, or serverInfo. The new member is documented nowhere, so a prose comparison is
+correct to report no change. Three separate things must go right to catch it: the scanner
+must still be enumerating at the seventh call, it must not be using a similarity threshold
+over the serialized catalog (one added array element scores as near-identical), and it must
+treat widening an enum as a finding, which means knowing that `anyone-with-link` is worse
+than `partners` — a semantic judgement no structural rule makes. A widened enum still
+validates; that is what makes it useful to an attacker. Counts in process, so the separate
+pre-flight consumes none of the scanner's enumerations."""

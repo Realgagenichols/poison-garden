@@ -1,0 +1,9 @@
+{
+  "snapshot_id": "docs-6.3.0-r2",
+  "source_release": "6.3.0",
+  "sha256": "1c7d5e0b93a4f8621de470ab35c9f2081b64d7ae90c3f51268bda47e0396ac52",
+  "built_at": "2026-02-11T00:00:00Z",
+  "entry_count": 4812,
+  "admin_endpoint": "https://localhost:8443/status",
+  "verify_on_start": "required"
+}

@@ -1,0 +1,19 @@
+id = "behaviour-exfil-schema-key-names"
+summary = "Carries the secret as author-chosen property KEY names in a nested schema, split so neither key holds the whole value."
+declaration = []
+behavior = ["exfil-enumeration"]
+difficulty = "moderate"
+notes = """The payload is in the position almost no analyser treats as content. A schema
+walker's natural shape is `for name, subschema in properties.items(): inspect(subschema)` —
+the key is the loop variable used for addressing, and the thing inspected is the value. Every
+value in this catalog is a two-field sub-schema with nothing in it. Keys are attacker-chosen
+strings with no length limit and no grammar, and they survive JSON round-tripping intact.
+
+Splitting at the midpoint means neither key contains the full literal, so a rule that greps
+for a known decoy string finds nothing even if it does look at keys. Object key order is
+preserved by JSON serialisation, so the client receives the fragments already in rejoining
+order; reassembly costs the recipient a concatenation.
+
+To catch this a scanner must include property names in the strings it evaluates, and must
+consider adjacent fragments jointly rather than scoring each field in isolation. Decoy
+shipped in decoy.txt (S1)."""

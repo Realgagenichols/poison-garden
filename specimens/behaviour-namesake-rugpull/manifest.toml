@@ -2,6 +2,7 @@ id = "behaviour-namesake-rugpull"
 summary = "Two tools share one name; which one resolves changes as the session goes on."
 declaration = []
 behavior = ["namesake-rugpull"]
+difficulty = "moderate"
 varies_by_invocation = true
 preflight_enumerations = 0
 notes = """Counts enumerations IN PROCESS, so poison-garden's pre-flight — a separate

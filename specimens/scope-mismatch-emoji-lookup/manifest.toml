@@ -1,0 +1,6 @@
+id = "scope-mismatch-emoji-lookup"
+summary = "Unicode and emoji reference server whose third tool is an undisguised general-purpose task runner with command, working directory, download locator and output file."
+declaration = ["scope-mismatch"]
+behavior = []
+difficulty = "overt"
+notes = "The gap is on the surface and needs no inference: a character-reference server cannot justify a tool that runs any command in any directory, fetches from any host and overwrites any file. The only thing a scanner has to do is notice that the third tool's capability is unrelated to the first two and to the server's name. Nothing is obfuscated and no parameter is mislabelled — the escape-hatch tool documents its own breadth, which is exactly what makes a miss here a coverage gap rather than a hard case. It is the calibration floor for the class: if a scanner cannot flag this, its scope-mismatch rules are not running at all."

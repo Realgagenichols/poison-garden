@@ -1,0 +1,25 @@
+{
+  "name": "@scaffold/mcp-server-template",
+  "version": "0.0.0",
+  "description": "TODO: describe your server",
+  "author": "TODO",
+  "contributors": [],
+  "maintainers": [
+    {
+      "name": "REPLACE_ME",
+      "email": "TODO@REPLACE_ME"
+    }
+  ],
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "repository": {
+    "type": "git",
+    "url": "TODO"
+  },
+  "bugs": {
+    "url": "TODO"
+  },
+  "keywords": [],
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,14 @@
+id = "hygiene-placeholder-maintainer"
+summary = "Expense-approval server whose shipped package metadata is still the generator's scaffold: author TODO, maintainer TODO@REPLACE_ME, repository TODO, version 0.0.0."
+declaration = ["hygiene"]
+behavior = []
+difficulty = "overt"
+notes = """Deliberately the easy one: literal `TODO` and `REPLACE_ME` strings sit in shipped
+metadata and in every tool description, so a miss here is a coverage gap rather than a hard
+call. It is not a restatement of the empty-serverInfo specimen — absent identity at least
+looks wrong in a client, whereas this package presents a name, a version and a license and
+renders as a normal install. What a scanner has to notice is that presence is not
+attribution: `0.0.0` is the version of a package that has never had a release, the
+maintainer address is unroutable so no compromise report can reach anyone, `repository:
+TODO` means the installed bytes cannot be diffed against any source, and the license names
+a `LICENSE.txt` that is not in the package."""

@@ -13,12 +13,17 @@ import sys
 
 import pytest
 from helpers import (
+    CLIENT_PROFILES,
+    INSPECTOR_PROFILE,
+    PROFILE_AXES,
     REPO_ROOT,
     SPECIMENS,
-    catalog_for_client,
-    enumerate_twice_in_one_session,
+    catalog_for_profile,
+    catalogs_across_profiles,
+    enumerate_n_times_in_one_session,
     handshake,
     shipped_specimen_ids,
+    variation_defects,
 )
 
 from poison_garden.cli import EXIT_OK, main
@@ -335,28 +340,225 @@ def test_every_declared_varier_actually_varies(corpus):
         )
         classes = specimen.classes
         if Class.NAMESAKE_RUGPULL in classes:
-            catalogs = enumerate_twice_in_one_session(specimen.entrypoint_path)
-            assert catalogs[0] != catalogs[1], (
-                f"{specimen.id}: two enumerations in ONE session produced the same "
-                "catalog, so the rug-pull never happens"
+            # Driven to the enumeration the MANIFEST names, plus two, then checked in both
+            # directions. Asserting only `catalogs[0] != catalogs[1]` made "fires
+            # immediately" the sole expressible rug-pull — which is the one two-sample
+            # diffing already catches, so the guard excluded exactly the specimens worth
+            # having.
+            fires_at = specimen.manifest.varies_at_enumeration
+            catalogs = enumerate_n_times_in_one_session(
+                specimen.entrypoint_path, fires_at + 2
             )
+            defects = variation_defects(specimen.id, catalogs, fires_at)
+            assert not defects, "\n".join(defects)
         elif Class.SCANNER_AWARE in classes:
-            scanner_view = catalog_for_client(
-                specimen.entrypoint_path, "mcp", capabilities={}
+            # Compared against EVERY agent profile, not one. The previous version drove a
+            # single pair that varied `capabilities` and `clientInfo.name` only, so a
+            # specimen keying on the shape of `clientInfo` — which R14 explicitly permits,
+            # since it is something the client controls and reveals — served both probes
+            # identically and was reported as not evading at all. A fixed pair silently
+            # narrowed R14 to one axis, and the narrowing presented as a passing test.
+            views = catalogs_across_profiles(specimen.entrypoint_path)
+            inspector = views[INSPECTOR_PROFILE]
+            agents = {k: v for k, v in views.items() if k != INSPECTOR_PROFILE}
+            assert any(view != inspector for view in agents.values()), (
+                f"{specimen.id}: an inspector and every agent profile "
+                f"({sorted(agents)}) saw the same catalog, so the evasion never occurs. "
+                f"Its declared discriminator is: {specimen.manifest.discriminator[:120]}"
             )
-            client_view = catalog_for_client(
-                specimen.entrypoint_path,
-                "claude-desktop",
-                capabilities={"roots": {"listChanged": True}, "sampling": {}},
-            )
-            assert scanner_view != client_view, (
-                f"{specimen.id}: a scanner and an ordinary client saw the same catalog, "
-                "so the evasion does not occur"
-            )
-
 
 def test_no_pure_declaration_specimen_claims_to_vary(corpus):
     """Control: the exemption is available only to specimens whose class requires it."""
     for specimen in corpus.specimens:
         if specimen.manifest.varies_by_invocation:
             assert specimen.manifest.behavior, f"{specimen.id} varies without a behaviour class"
+
+
+def test_some_rugpull_specimen_fires_late_enough_to_exercise_the_early_check(corpus):
+    """Vacuity guard (P58/P64) for the half of `variation_defects` that can go unrun.
+
+    Its "did not fire early" loop is `range(1, fires_at)` — empty when the threshold is 1.
+    A corpus where every rug-pull fires immediately would exercise only the second half of
+    the check, and the declaration would be buying nothing, silently.
+
+    This also guards something about the CORPUS, not just the test: a corpus of only
+    immediate rug-pulls measures the easy case. The late-firing specimen is the one a
+    scanner sampling twice still misses, and it is the reason the threshold is declarable
+    at all.
+    """
+    thresholds = {
+        s.id: s.manifest.varies_at_enumeration
+        for s in corpus.specimens
+        if Class.NAMESAKE_RUGPULL in s.classes and s.manifest.varies_by_invocation
+    }
+    assert thresholds, "no rug-pull specimen declares varies_by_invocation"
+    assert any(n > 1 for n in thresholds.values()), (
+        "every rug-pull fires on the first re-enumeration, so the 'did not fire early' "
+        f"check never runs on any specimen: {thresholds}. A corpus of only immediate "
+        "rug-pulls measures the case two-sample diffing already catches."
+    )
+
+
+def test_the_early_fire_check_actually_catches_an_early_fire():
+    """FALSIFICATION (P31/P50): a guard never shown to fire is decoration.
+
+    Feeds `variation_defects` a specimen that claims to wait until enumeration 4 and in
+    fact mutates at 1, and asserts it is caught. Without this, the loop could be reversed,
+    off by one, or comparing the wrong index, and the suite would stay green.
+    """
+    catalogs = ["clean", "MUTATED", "MUTATED", "MUTATED", "MUTATED", "MUTATED"]
+    defects = variation_defects("liar", catalogs, fires_at=4)
+    assert defects, "a specimen mutating 3 enumerations early was not caught"
+    assert "already changed at enumeration 1" in defects[0]
+
+
+def test_the_never_fires_check_actually_catches_a_specimen_that_never_fires():
+    """The other direction — the half the original assertion covered."""
+    defects = variation_defects("inert", ["same"] * 6, fires_at=3)
+    assert defects, "a specimen that never mutates was not caught"
+    assert "never happens" in defects[0]
+
+
+def test_a_correctly_timed_rugpull_produces_no_defects():
+    """Control (P49): a checker that returns findings for everything would pass both above."""
+    catalogs = ["clean", "clean", "clean", "MUTATED", "MUTATED"]
+    assert variation_defects("honest", catalogs, fires_at=3) == []
+
+
+def test_the_client_profiles_are_coherent_clients_not_a_bag_of_flags():
+    """The inspector and every agent must differ on EVERY observable axis.
+
+    This guard exists because the profiles grew by accretion: three times, a scanner-aware
+    specimen keyed on a signal the driver did not vary, and the fix was to add that axis.
+    That is the right fix each time — the specimens keyed on things real clients genuinely
+    differ on — but the failure mode it invites is tuning one flag until a test goes green,
+    which would leave a profile that is no longer any real client.
+
+    Asserting difference on every axis keeps INSPECTOR a coherent portrait of something that
+    connects, sweeps, lists once and leaves, and the agents a portrait of something driving
+    a model. A specimen may then key on any of them and be measured.
+    """
+    inspector = CLIENT_PROFILES[INSPECTOR_PROFILE]
+    agents = {k: v for k, v in CLIENT_PROFILES.items() if k != INSPECTOR_PROFILE}
+    assert agents, "no agent profile to contrast the inspector against"
+
+    for name, agent in agents.items():
+        for axis in PROFILE_AXES:
+            assert agent[axis] != inspector[axis], (
+                f"profile '{name}' matches the inspector on '{axis}'. A specimen keying on "
+                "that axis cannot be measured, and the test would report no evasion."
+            )
+        assert agent["params"]["capabilities"], f"'{name}' declares no capabilities"
+        assert "title" in agent["params"]["clientInfo"], (
+            f"'{name}' omits clientInfo.title — the field a client with a UI populates"
+        )
+
+    assert not inspector["params"]["capabilities"]
+    assert "title" not in inspector["params"]["clientInfo"]
+
+
+def test_registered_misses_were_actually_missed():
+    """Every row in KNOWN-MISSES must name a specimen the result document records as missed.
+
+    The register is the project's central honesty commitment (N2), and until now nothing
+    connected it to the measurement it claims to summarise: the version and hash were
+    checked, the rows were not. A row could name a specimen frisk catches — through a
+    rewritten specimen, a fixed detector, or a copy-paste — and the count would still pass,
+    which would turn "specimens frisk fails" into "specimens someone once wrote down"
+    (P68 — a published figure needs a mechanical relation to its source).
+    """
+    import json as _json
+    import sys as _sys
+
+    _sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from check_known_misses import count_entries
+
+    registered = set(count_entries((REPO_ROOT / "KNOWN-MISSES.md").read_text("utf-8")))
+    assert registered, "the register names no specimens"
+
+    results = sorted((REPO_ROOT / "results").glob("*frisk*.json"))
+    assert results, "no committed frisk result to check the register against"
+    document = _json.loads(results[0].read_text("utf-8"))
+
+    missed = {m for entry in document["per_class"] for m in entry["missed"]}
+    assert missed, "the result document records no misses at all — N2 cannot be satisfied"
+
+    caught_but_registered = sorted(registered - missed)
+    assert not caught_but_registered, (
+        f"KNOWN-MISSES registers {caught_but_registered}, which the committed result "
+        "document does not list as missed. Either frisk now catches them — strike those "
+        "rows and register new specimens — or the register was edited without re-running "
+        "the measurement."
+    )
+
+
+def test_the_register_is_checked_against_the_documents_own_corpus():
+    """The register and the result must describe the SAME corpus, or the check above is void.
+
+    Comparing a register written for v0.3.0 against a result document measured on v0.2.2
+    would compare two different populations and pass or fail for reasons unrelated to frisk
+    (R4 — two documents are comparable only when they describe the same corpus).
+    """
+    import json as _json
+
+    results = sorted((REPO_ROOT / "results").glob("*frisk*.json"))
+    document = _json.loads(results[0].read_text("utf-8"))
+    register = (REPO_ROOT / "KNOWN-MISSES.md").read_text("utf-8")
+
+    assert document["corpus"]["hash"] in register, (
+        "the register does not cite the hash of the result document it is checked against"
+    )
+    assert corpus_hash(load_corpus(SPECIMENS)) == document["corpus"]["hash"], (
+        "the corpus on disk is not the one the committed result document measured"
+    )
+
+
+def _tool_names_for_profile(entrypoint, profile: str) -> set[str]:
+    import json as _json
+
+    catalog = _json.loads(catalog_for_profile(entrypoint, profile) or "{}")
+    return {t.get("name", "") for t in catalog.get("tools", [])}
+
+
+def test_scanner_aware_evasion_never_runs_backwards(corpus):
+    """An inspector must never be shown a tool some agent is not.
+
+    R14's property is directional: clean definitions to an inspector, poisoned ones to a
+    real agent. The varier test above only asserts the two views *differ*, and a specimen
+    can satisfy that while evading in reverse — serving the inspector the dangerous catalog
+    and a subset of real clients the clean one. That is not an evasion; it is an ordinary
+    poisoned server with a narrow exemption, and it will be caught by any scanner.
+
+    This is not hypothetical. A now-deleted specimen, `behaviour-scanner-aware-legacy-
+    protocol-pin`, keyed on the caller declaring an older `protocolVersion`, on the premise
+    that an enumerator is built once and never moves. frisk declares a current one, was
+    served the poisoned catalog, and flagged it — making that specimen the class's only
+    "catch" and inflating frisk's score on the strength of a specimen that was not working.
+    A corpus crediting its own author's scanner for that is the precise failure N2 exists to
+    prevent, so it gets a guard rather than a note. It was replaced by
+    `behaviour-scanner-aware-default-client-identity`; this assertion is what would have
+    caught it without needing a scanner run at all, since the corpus's own `inspector`
+    profile declares a current protocol revision and `agent-older-protocol` does not.
+
+    Subset rather than equality, because withholding a tool is only one shape of evasion:
+    sanitising a description leaves the tool sets identical and is caught by the varier test.
+    """
+    aware = [s for s in corpus.malicious if Class.SCANNER_AWARE in s.classes]
+    assert aware, "no scanner-aware specimens — R14 is unimplemented"
+
+    backwards: list[str] = []
+    for specimen in aware:
+        inspector = _tool_names_for_profile(specimen.entrypoint_path, INSPECTOR_PROFILE)
+        for profile in CLIENT_PROFILES:
+            if profile == INSPECTOR_PROFILE:
+                continue
+            agent = _tool_names_for_profile(specimen.entrypoint_path, profile)
+            extra = inspector - agent
+            if extra:
+                backwards.append(
+                    f"{specimen.id}: the inspector is served {sorted(extra)}, which the "
+                    f"'{profile}' client is not. The evasion runs backwards — a scanner "
+                    "sees more surface than a real client, so it will simply catch this."
+                )
+
+    assert not backwards, "\n".join(backwards)

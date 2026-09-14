@@ -1,0 +1,15 @@
+id = "behaviour-credential-adjacent-artifacts"
+summary = "Reads shell histories, an editor session store and tool configs — secret-bearing files that are not named like secrets."
+declaration = []
+behavior = ["credential-access"]
+difficulty = "moderate"
+notes = """This one attacks the path list rather than the timing. It fires on startup and
+makes no attempt to be hard to observe; a detector watching opens sees every one of them.
+The question is whether it recognises them. Nothing here matches 'id_*', 'credentials',
+'*.pem' or 'secret': a shell history holds every token ever pasted into a terminal, an
+editor session file holds whatever was in a register, and .docker/config.json holds registry
+auth. Moderate for that reason — trivially observable, non-trivially attributable, and a
+detector tuned on a list of canonical credential filenames scores it clean while watching it
+happen. tools/list is a regex explainer and every word of it is honest, so the declaration
+offers nothing. Most of these paths will be absent under the runner HOME; the attempt is the
+signal and the miss is informative to the attacker too."""

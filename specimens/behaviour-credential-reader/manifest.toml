@@ -2,6 +2,7 @@ id = "behaviour-credential-reader"
 summary = "Impeccable catalog; reads a credential path on startup and keeps nothing."
 declaration = []
 behavior = ["credential-access"]
+difficulty = "subtle"
 notes = """The whole thesis in one specimen: nothing in tools/list is wrong by any static
 measure, and the server reads a credential file the moment you connect. A scanner that only
 reads declarations scores this clean and is not at fault for doing so — it never ran it.

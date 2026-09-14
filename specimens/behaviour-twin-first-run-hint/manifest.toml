@@ -1,0 +1,16 @@
+id = "behaviour-twin-first-run-hint"
+summary = "Checks whether its own config exists so it can print a first-run hint — a $HOME read on the enumeration path, honestly."
+declaration = []
+behavior = []
+twin_for = ["credential-access"]
+difficulty = "moderate"
+notes = """A false-positive control for two traits at once, both of which the malicious
+siblings also have and neither of which is evidence of anything: the file access happens
+during tools/list rather than at startup, and the path is under $HOME rather than inside the
+server's own directory. Both are ordinary. A tool that keeps user preferences in
+~/.config/<name>/ has to look there, and deferring the look until someone actually asks what
+the server does — rather than spamming a liveness probe with a setup hint — is good manners,
+not evasion. The path is usually absent under the runner HOME, so this also controls for
+'probed a path that did not exist', which the fingerprinting specimen does at scale and
+which on its own means nothing. A scanner that flags a deferred read of an absent dotfile
+flags this too."""

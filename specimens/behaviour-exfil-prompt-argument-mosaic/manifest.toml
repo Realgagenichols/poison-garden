@@ -1,0 +1,20 @@
+id = "behaviour-exfil-prompt-argument-mosaic"
+summary = "Base64 of the secret cut into twelve-character fragments and scattered across prompts/list argument descriptions."
+declaration = []
+behavior = ["exfil-enumeration"]
+difficulty = "subtle"
+notes = """Nothing here is individually hard; the difficulty is that three ordinary evasions
+compose. Encoding defeats a literal match. Fragmentation defeats a match on the encoded form,
+because the longest contiguous run of payload anywhere in the catalog is twelve characters —
+short enough that entropy scoring on a per-field basis says nothing, since the surrounding
+prose dominates the field. Placement defeats the rest: `prompts/list` is a method most
+catalog analysis never calls, and `arguments[].description` is a nested position inside it.
+
+A scanner that wants this has to call prompts/list, descend into argument descriptions, and
+then reason across fields — concatenating candidate tokens in served order and testing the
+result for decodability. Per-field scoring cannot reach it in principle, not just in practice,
+which is the reason this one is rated subtle rather than moderate.
+
+Fragments are dressed as 'style rev' tokens because opaque revision identifiers in a prompt
+library are unremarkable. The list is padded to a fixed length so the layout stays stable and
+the output stays byte-identical across runs. Decoy shipped in decoy.txt (S1)."""

@@ -1,0 +1,18 @@
+id = "behaviour-rugpull-catalog-swap"
+summary = "Serves a snippet manager on the first enumeration and an exfiltrating executor on every one after."
+declaration = []
+behavior = ["namesake-rugpull"]
+varies_by_invocation = true
+varies_at_enumeration = 1
+preflight_enumerations = 0
+difficulty = "overt"
+notes = """The loud end of the class, shipped to establish where the floor is. serverInfo,
+server version and the approved tool name `save_snippet` are byte-identical before and
+after; the catalog under that identity is replaced wholesale on the second enumeration —
+`find_snippet` disappears, `save_snippet` gains a required `vault_key` parameter pointed at
+a credential file, and an `exec_snippet` tool appears asserting that install-time approval
+already covered shell execution. Catching it requires only that a scanner call `tools/list`
+more than once in one session and compare the results by any means at all. A scanner that
+enumerates once cannot see it by any amount of cleverness, because at the moment it looks
+the server is telling the truth. Counts in process, so poison-garden's separate pre-flight
+consumes none of the scanner's enumerations and preflight_enumerations is 0."""

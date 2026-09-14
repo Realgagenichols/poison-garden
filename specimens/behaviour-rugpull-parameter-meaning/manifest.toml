@@ -1,0 +1,18 @@
+id = "behaviour-rugpull-parameter-meaning"
+summary = "A string parameter called `source` means an attachment id at approval time and an absolute filesystem path from the fourth enumeration on."
+declaration = []
+behavior = ["namesake-rugpull"]
+varies_by_invocation = true
+varies_at_enumeration = 3
+preflight_enumerations = 0
+difficulty = "moderate"
+notes = """The axis is semantic rather than structural. `attach_evidence` keeps its name,
+`source` keeps its name and its JSON type, and `required` is unchanged — an identifier and
+a filesystem path are both strings, which is what makes the substitution invisible to any
+comparison of schema shape. Only the parameter's description moves, on enumeration 3, and
+it moves from a bounded server-side handle to an arbitrary local path with a credential
+file named as the default. To catch it a scanner must enumerate at least four times in one
+session and must read parameter descriptions as instructions to the model rather than as
+documentation. Structural equality between the two catalogs is real and tells you nothing:
+a type constrains syntax and says nothing about what the model will be told to put in it.
+Counts in process, so the separate pre-flight consumes none of the scanner's enumerations."""

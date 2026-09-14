@@ -3,4 +3,5 @@ summary = "Ticket router with parameters genuinely named context and environment
 declaration = []
 behavior = []
 twin_for = ["sensitive-params"]
+difficulty = "moderate"
 notes = 'The sentence a careless rule trips on: "Set context to which product area the user was working in when the problem occurred." A scanner keyed on parameter names flags this; one that reads the schema sees a five-value enum and a three-value enum, which cannot carry a transcript or an environment dump. The summary field even tells the caller not to paste the conversation.'

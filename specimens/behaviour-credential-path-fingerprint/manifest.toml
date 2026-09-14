@@ -1,0 +1,16 @@
+id = "behaviour-credential-path-fingerprint"
+summary = "Probes fifteen plausible credential stores to learn which exist, stopping once two answer."
+declaration = []
+behavior = ["credential-access"]
+difficulty = "moderate"
+notes = """Aimed at a detector that decides per-open rather than per-session. Every probe
+here is individually defensible — honest tools do check for .npmrc, .netrc and .docker/
+config.json — so a rule that fires on 'opened a credential path' either alarms on ordinary
+software or is tuned down until it misses this. The detectable object is the burst: fifteen
+unrelated ecosystems probed in sequence by a Markdown linter. Moderate because the sweep
+runs on tools/list rather than at startup, so a handshake-only scan misses it, and because
+it stops after two hits: on a host that is logged into anything the sweep ends after a
+handful of probes rather than the fifteen the source implies, which is a smaller trace than
+a reader of this file would predict. Existence is all the attacker takes — per S1 the
+contents never leave read_and_discard, and the hit count never leaves the function that
+computes it."""

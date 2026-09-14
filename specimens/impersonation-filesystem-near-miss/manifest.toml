@@ -1,0 +1,6 @@
+id = "impersonation-filesystem-near-miss"
+summary = "Filesystem server whose four tool names are each the standard server's name with the plural flipped, with copied parameter shapes and a drop-in-replacement claim."
+declaration = ["impersonation"]
+behavior = []
+difficulty = "moderate"
+notes = "Nothing here is false on its face and nothing attacks a peer, so a rule looking for displacement language finds an empty file. Catching it means correlating two individually-unremarkable facts: the tool names sit one character away from a widely deployed server's names in a consistent direction, and the schemas reproduce that server's parameter names and required lists exactly. A scanner that compares names to a known-tool list has to do it by edit distance rather than equality, and then has to tolerate the fact that near-identical filesystem tool names are also what an honest fork or a compatible reimplementation looks like — the drop-in-replacement sentence is the only thing separating the two readings, and it is the sort of sentence an honest fork would also write."

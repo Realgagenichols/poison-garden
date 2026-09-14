@@ -63,6 +63,44 @@ BEHAVIOR_CLASSES: frozenset[Class] = frozenset(
 )
 
 
+# Below this many scorable specimens, a class's recall is not evidence about a scanner —
+# it is evidence about one specimen. A population of one cannot separate "this tool has a
+# gap here" from "this particular case is hard" (cross-cutting P48).
+#
+# Defined here, in the corpus layer, because it is a statement about whether the CORPUS is
+# adequate, not about how a run is scored. Scoring and validation both import this one
+# definition rather than each carrying a copy — a single threshold spelled in two places
+# drifts, and the two surfaces would then disagree about which classes are quotable (P95).
+MIN_SPECIMENS_FOR_A_CLAIM = 5
+
+
+class Difficulty(StrEnum):
+    """How hard a specimen is *meant* to be — R20.
+
+    Declared by the author, never inferred from whether a scanner caught it. Inferring it
+    would make the corpus grade itself on the curve of whoever ran it last, and a specimen
+    would change tier every time a vendor shipped a release.
+
+    The point is diagnostic, not decorative. "42% recall on injection" tells a maintainer
+    nothing they can act on; "6/6 overt, 1/6 subtle" tells them their rules fire on the
+    obvious phrasing and nothing else — which is a bug report, not a grade. It is also the
+    honest way to read a low number: a scanner that catches every OVERT specimen and misses
+    the subtle ones is in a different position from one that misses both, and a single
+    percentage cannot tell those apart.
+    """
+
+    # The tell is on the surface: a scanner with a reasonable rule for this class should
+    # find it. Misses here are gaps in coverage, not in subtlety.
+    OVERT = "overt"
+    # The tell is present and unambiguous but requires reading past the first line, or
+    # correlating two fields that are individually unremarkable.
+    MODERATE = "moderate"
+    # The tell survives a careful reader only because it exploits something structural —
+    # encoding, context, a behaviour no declaration reveals. Misses here are expected and
+    # are not, on their own, a criticism of any scanner.
+    SUBTLE = "subtle"
+
+
 class ManifestError(Exception):
     """A manifest is malformed. Carries the specimen path and the offending key."""
 
@@ -98,6 +136,28 @@ class Manifest:
     # defect: our pre-flight and the scanner's run are two invocations, and an undeclared
     # variation means the scanner measures something we never saw.
     varies_by_invocation: bool = False
+    # The enumeration index, counting from 0, at which the catalog first differs from the
+    # one served at enumeration 0.
+    #
+    # Exists because the test guarding `varies_by_invocation` asserted `catalogs[0] !=
+    # catalogs[1]`, which quietly made "fires immediately" the only rug-pull the corpus
+    # could express. That is the *easiest* rug-pull to catch: two-sample diffing finds it.
+    # The interesting specimen is the one that waits, precisely because a scanner that
+    # enumerates twice still sees nothing — and the guard forbade exactly that specimen.
+    #
+    # Declaring the index rather than loosening the assertion to "varies somewhere" keeps
+    # the check strong in both directions: a specimen that claims 6 and fires at 1 fails,
+    # and so does one that claims 6 and never fires (P76 — the expectation is listed
+    # literally rather than inferred). The default of 1 is exactly the old assertion, so
+    # every existing specimen keeps the guard it already had.
+    varies_at_enumeration: int = 1
+
+    # --- declared difficulty (R20) -----------------------------------------------------
+    # Defaults to MODERATE rather than OVERT deliberately. An author who has not thought
+    # about the tier should not have their specimen counted among the ones a scanner is
+    # *expected* to catch — that would inflate the overt bucket, which is the bucket a miss
+    # is read as a defect in.
+    difficulty: Difficulty = Difficulty.MODERATE
 
     @property
     def is_benign(self) -> bool:
@@ -141,6 +201,10 @@ class Specimen:
     @property
     def twin_for(self) -> frozenset[Class]:
         return frozenset(self.manifest.twin_for)
+
+    @property
+    def difficulty(self) -> Difficulty:
+        return self.manifest.difficulty
 
     def files(self) -> list[Path]:
         """Every file shipped as part of this specimen, sorted.

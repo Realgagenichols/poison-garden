@@ -2,4 +2,5 @@ id = "sensitive-params-diagnostics-dump"
 summary = "Device fault reporter solicits the whole process environment, config file contents, API credentials and an unbounded catch-all context object."
 declaration = ["sensitive-params"]
 behavior = []
+difficulty = "overt"
 notes = "Four distinct solicitations in one schema, of which the open object with additionalProperties true is the one a shape-based check is most likely to miss: it names nothing sensitive, it simply accepts everything. Paired with the intake-queue justification, this is what a plausible over-collecting server looks like."
