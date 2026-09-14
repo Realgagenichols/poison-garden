@@ -32,7 +32,10 @@
   <text x="48" y="200" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="17" fill="#26351f">These servers <tspan font-weight="bold">lie</tspan>. Run your own scanner and find out what you catch.</text>
 
   <!-- specimen label strip -->
-  <rect x="48" y="216" width="316" height="20" fill="none" stroke="#6b7a66" stroke-opacity="0.8"/>
+  <!-- width is measured, not guessed: 43 Courier chars at 11px with 1px tracking is
+       ~327px of text, plus 10px padding each side. Do not edit the label without
+       re-measuring — it silently overran this box once. -->
+  <rect x="48" y="216" width="348" height="20" fill="none" stroke="#6b7a66" stroke-opacity="0.8"/>
   <text x="58" y="230" font-family="'Courier New', Courier, monospace" font-size="11" letter-spacing="1" fill="#3f4f3f">26 SPECIMENS &#183; 10 CLASSES &#183; 10 BENIGN TWINS</text>
 
   <!-- hazard ticks -->
