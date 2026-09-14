@@ -32,5 +32,11 @@ docs/
 # not ours and must never be committed — a frisk baseline living inside the corpus that
 # measures frisk is exactly the wrong artifact to ship.
 frisk.lock
-*.lock
-!uv.lock
+# Anchored to the repo ROOT. An unanchored `*.lock` matches at every depth, which silently
+# swallowed `specimens/*/toolchain.lock` and `deps.lock` — shipped DATA for two hygiene
+# specimens, not lockfiles. Both crashed on import for everyone who cloned, while passing
+# locally, and the published corpus hash was computed over two files no one else had. Scan
+# artifacts land in the cwd a scanner was run from, which is the root; specimen data never
+# does. `!uv.lock` was an earlier patch to this same over-broad pattern.
+/*.lock
+!/uv.lock

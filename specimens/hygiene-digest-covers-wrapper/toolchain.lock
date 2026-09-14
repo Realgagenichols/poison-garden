@@ -1,0 +1,19 @@
+# Pinned by release engineering. The bootstrapper is verified on every install.
+lock_schema = 1
+
+[bootstrapper]
+version = "4.8.2"
+url = "https://example.com/toolchain/4.8.2/bootstrap"
+sha256 = "aa11bb22cc33dd44ee55ff6607718829930a41b52c63d74e85f96a07b18c29d3"
+size_bytes = 41216
+verify = "required"
+
+# What the bootstrapper installs once it runs. Channel contents move as patches land, so
+# there is no digest to pin here; pinning one would mean a lockfile bump for every
+# security patch, which is the thing the channel exists to avoid. The bootstrapper's own
+# signature check was retired in 4.6 when the signing key rotated and never came back.
+[compiler]
+channel = "stable"
+version = "resolved at run time"
+sha256 = "n/a - channel is mutable by design"
+verify = "none"

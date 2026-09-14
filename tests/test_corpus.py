@@ -16,6 +16,9 @@ from poison_garden.corpus.loader import CorpusError, load_corpus
 from poison_garden.corpus.models import Class, ManifestError
 from poison_garden.corpus.validate import validate_corpus
 
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SPECIMENS = REPO_ROOT / "specimens"
+
 POISONED = {"id": "injection-poisoned", "declaration": ["injection"]}
 TWIN = {"id": "injection-twin", "twin_for": ["injection"]}
 
@@ -298,3 +301,59 @@ def test_refuse_mismatch_names_both_hashes():
 
 def test_refuse_mismatch_allows_identical_hashes():
     refuse_mismatch("sha256:aaa", "sha256:aaa")  # must not raise
+
+
+def test_every_shipped_specimen_file_is_tracked_by_git():
+    """A file the corpus hash covers but git does not ship is a corpus that only exists here.
+
+    `Specimen.files()` walks the filesystem, so a file present on the author's disk and
+    absent from the repository is hashed locally, published in the result document as the
+    corpus hash, and missing for everyone who clones. The specimen is then simply broken for
+    every user, and the hash names a corpus nobody else can reproduce — which is R4's
+    guarantee inverted.
+
+    Found by CI: `.gitignore` carried a blanket `*.lock`, intended for dependency lockfiles,
+    which silently swallowed `toolchain.lock` and `deps.lock` — shipped *data* for two
+    hygiene specimens. Both crashed on import for every user while passing locally, and the
+    published corpus hash was computed over two files nobody else had.
+
+    Checks tracked-ness rather than mere existence, because existence is what already
+    passed: every other guard in this suite reads the local filesystem, so all of them were
+    blind in exactly the same way (P86 — ask what the instrument actually touched).
+    """
+    import subprocess
+
+    # The one skip in this suite that is correct rather than a silence. The question asked
+    # here — "does the repository ship what the hash covers?" — is meaningless without a
+    # repository, which is the case for an sdist or a downloaded tarball. It is never the
+    # case in CI, which is the environment this guard exists to protect, so the skip cannot
+    # quietly become permanent where it matters.
+    if not (REPO_ROOT / ".git").exists():
+        pytest.skip("not a git checkout; tracked-ness is not a question that applies here")
+
+    tracked = set(
+        subprocess.run(
+            ["git", "ls-files", "-z"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split("\0")
+    )
+    assert tracked, "git ls-files returned nothing — this guard would pass vacuously (P58)"
+
+    corpus = load_corpus(SPECIMENS)
+    assert corpus.specimens, "no specimens to check"
+
+    untracked = sorted(
+        str(path.resolve().relative_to(REPO_ROOT))
+        for specimen in corpus.specimens
+        for path in specimen.files()
+        if str(path.resolve().relative_to(REPO_ROOT)) not in tracked
+    )
+    assert not untracked, (
+        f"{untracked} are covered by the corpus hash but are not in the repository. They "
+        "exist on this machine only, so every clone gets a different corpus than the one "
+        "the published hash names, and any specimen that reads them is broken for everyone "
+        "but you. Check `.gitignore` — a blanket pattern is the usual cause."
+    )
