@@ -127,19 +127,18 @@ rule targets that class at all, which suggests the scattered subtle catches are 
 some other rule rather than evidence of depth. A single per-class percentage cannot express
 that; this is what the tier field was added for.
 
-**The twin tiers are corroborated by the measurement, along a path that did not use it.**
-Tiers were assigned by a reviewer judging only how tempting each false positive looked, who
-never ran a scanner. Every false positive frisk produced landed in the top tier:
+**The twin-tier corroboration previously reported here is WITHDRAWN.** An earlier version of
+this file observed that every false positive frisk produced fell in the top twin tier, and
+offered it as independent evidence that the tier scale was sound. That inference rested on
+twin tiers which have since been measured and found unreliable: eight blind raters reach
+Krippendorff's α of 0.57–0.69 on twins, with intervals straddling the usable floor. A pattern
+computed against an unreliable label is not corroboration of anything. See
+[`docs/tier-reliability.md`](docs/tier-reliability.md).
 
-| Twin tier | Twins | frisk false positives |
-|---|---|---|
-| overt | 17 | 4 |
-| moderate | 13 | 0 |
-| subtle | 3 | 0 |
-
-Two independent routes to the same ordering. This is an observation, not a requirement —
-tiers are declared by authors and must never be tuned to what any scanner does, or the
-corpus would be shaped around one tool, which is exactly what N1 and N2 exist to prevent.
+Tiers on *malicious* specimens fare much better (α ≈ 0.83) and the per-tier counts above
+stand — with one caveat recorded there: independent readers agree with the shipped
+**behavioural** tiers only 46% of the time, against 79% for declaration tiers, so the
+behavioural rows deserve re-verification before anyone leans on them.
 
 ### The registered misses (N2)
 

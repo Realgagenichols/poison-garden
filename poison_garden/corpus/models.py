@@ -87,6 +87,19 @@ class Difficulty(StrEnum):
     honest way to read a low number: a scanner that catches every OVERT specimen and misses
     the subtle ones is in a different position from one that misses both, and a single
     percentage cannot tell those apart.
+
+    **The assignment rubric lives in CONTRIBUTING.md, not here.** It used to live only in
+    this docstring, which meant no contributor ever read it: every tier in the corpus was
+    assigned by someone briefed in conversation instead, and the field had never been tested
+    the way a contributor meets it. When it finally was, four independent raters each
+    reported the same four gaps in it.
+
+    **Reliability, measured rather than assumed** (docs/tier-reliability.md): eight blind
+    raters over 60 specimens reach Krippendorff's α ≈ 0.83 on malicious specimens — good —
+    and 0.57–0.69 on benign twins, straddling the usable floor. Twin tiers are therefore
+    UNVALIDATED. Nothing consumes them: `by_difficulty` is computed over malicious specimens
+    only, and no result document carries a twin's tier. Do not add a consumer until that
+    number is established.
     """
 
     # The tell is on the surface: a scanner with a reasonable rule for this class should

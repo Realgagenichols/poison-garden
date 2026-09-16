@@ -25,7 +25,11 @@ CLAUDE.md
 SPEC.md
 tasks/
 changes/
-docs/
+# Working design notes stay local; anything the README or CONTRIBUTING links to must ship.
+# A blanket `docs/` silently swallowed docs/tier-reliability.md, which three shipped files
+# link to — the same defect as the unanchored `*.lock` below, which swallowed two specimens'
+# data files. `test_linked_documents_are_tracked` now fails the build instead.
+docs/design/
 
 # Scan artifacts written into the repo root by third-party scanners run against the
 # corpus during development (e.g. `frisk scan` drops a frisk.lock in cwd). These are

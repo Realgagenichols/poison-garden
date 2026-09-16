@@ -290,3 +290,62 @@ def test_readme_quoted_result_figures_match_the_committed_document():
                 f"{documents[0].name} says {actual[field]!r}. Copy the figure from the "
                 "document; do not recompute it."
             )
+
+
+def test_linked_documents_are_tracked_and_present():
+    """Every repo-relative link in a shipped document must resolve AND be in git.
+
+    This is the third instance of one defect. A blanket `*.lock` swallowed two specimens'
+    data files, so two specimens crashed on import for everyone who cloned while passing
+    locally. A blanket `docs/` then swallowed `docs/tier-reliability.md`, which README,
+    CONTRIBUTING and SPEC all link to. Both times the file existed on the author's disk, so
+    every check that reads the filesystem was satisfied — including the guard written after
+    the first one, which only covers specimens.
+
+    The question is not "does this file exist here" but "does the repository ship what it
+    links to". Those differ exactly when a `.gitignore` pattern is broader than intended,
+    which is the failure mode that keeps recurring.
+    """
+    import re
+    import subprocess
+
+    if not (REPO_ROOT / ".git").exists():
+        pytest.skip("not a git checkout; tracked-ness is not a question that applies here")
+
+    tracked = set(
+        subprocess.run(
+            ["git", "ls-files", "-z"], cwd=REPO_ROOT,
+            capture_output=True, text=True, check=True,
+        ).stdout.split("\0")
+    )
+    assert tracked, "git ls-files returned nothing — this guard would pass vacuously (P58)"
+
+    # Documents a reader actually receives. SPEC.md is deliberately excluded: it is local by
+    # design, so its links are not promises to anyone.
+    shipped = ["README.md", "CONTRIBUTING.md", "KNOWN-MISSES.md", "COMPARISON.md"]
+    link = re.compile(r"\[[^\]]+\]\(([^)#]+)\)")
+
+    broken: list[str] = []
+    for name in shipped:
+        doc = REPO_ROOT / name
+        if not doc.is_file():
+            continue
+        for target in link.findall(doc.read_text(encoding="utf-8")):
+            if target.startswith(("http://", "https://", "mailto:")):
+                continue
+            rel = (doc.parent / target).resolve()
+            try:
+                as_posix = str(rel.relative_to(REPO_ROOT))
+            except ValueError:
+                broken.append(f"{name} -> {target} (escapes the repository)")
+                continue
+            if not rel.exists():
+                broken.append(f"{name} -> {target} (does not exist)")
+            elif rel.is_file() and as_posix not in tracked:
+                broken.append(f"{name} -> {target} (exists locally but is NOT in git)")
+
+    assert not broken, (
+        "shipped documents link to things the repository does not ship:\n  "
+        + "\n  ".join(broken)
+        + "\nCheck `.gitignore` — a blanket pattern is the usual cause."
+    )

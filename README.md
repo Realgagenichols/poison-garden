@@ -26,6 +26,7 @@
   <a href="#whats-in-the-corpus"><b>Corpus</b></a> ·
   <a href="#publishing-a-result"><b>Submit</b></a> ·
   <a href="COMPARISON.md"><b>Results</b></a> ·
+  <a href="CONTRIBUTING.md"><b>Contributing</b></a> ·
   <a href="#safety"><b>Safety</b></a> ·
   <a href="#limitations"><b>Limitations</b></a>
 </p>
@@ -249,6 +250,13 @@ report caught/total per tier within each class, because a single percentage cann
 the two situations a maintainer most needs to distinguish: a scanner that catches the obvious
 phrasing and nothing else, and one that misses both. `6/6 overt, 0/2 subtle` is a bug report.
 `75%` is a grade.
+
+The tier rubric is in [`CONTRIBUTING.md`](CONTRIBUTING.md), and it has been **tested rather
+than assumed**: eight blind raters over 60 specimens reach Krippendorff's α ≈ 0.83 on
+malicious specimens. Agreement on benign twins is weaker and not yet demonstrated reliable,
+so no published figure carries a twin's tier — see
+[`docs/tier-reliability.md`](docs/tier-reliability.md), which also records what that study
+failed to establish.
 
 ## Publishing a result
 
