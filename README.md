@@ -161,13 +161,26 @@ uv run poison-garden --help
 
 You bring the scanner. We never run it for you.
 
+**First, check your scanner is wired up.** This takes seconds and tells you the one thing
+the result document cannot: whether your exit codes are actually reaching us.
+
 ```bash
-# Run YOUR scanner over the corpus. {target} expands to the command that launches
-# one specimen — an interpreter plus a path, substituted as argv, never through a shell.
+uv run poison-garden selftest --scanner "your-scanner {target}"
+```
+
+**The interface `{target}` assumes.** It expands to the command that *launches* one
+specimen — an interpreter and a path, substituted as argv, never through a shell — and your
+scanner signals findings by **exit code**. If your scanner instead takes an MCP **config
+file** (several do, including Snyk's `agent-scan`, formerly `mcp-scan`), `{target}` will
+hand it an interpreter path to parse as JSON and it will not work. That gap is real and
+open; see [Limitations](#limitations).
+
+```bash
+# Run YOUR scanner over the corpus.
 uv run poison-garden run \
-  --scanner "mcp-scan {target}" \
-  --scanner-name "mcp-scan 1.4.0" \
-  --out results/mcp-scan-1.4.0.json
+  --scanner "your-scanner {target}" \
+  --scanner-name "your-scanner 1.4.0" \
+  --out results/your-scanner-1.4.0.json
 
 # A scanner whose exit codes differ
 uv run poison-garden run --scanner "…" --flag-on 2 --out result.json
@@ -350,6 +363,18 @@ thing than containment.
 
 Stated plainly, because a benchmark that oversells itself is worse than none.
 
+- **The launch-command interface does not fit every scanner.** `{target}` expands to a
+  command that launches a specimen, and the verdict comes from the scanner's exit code.
+  Scanners that take an MCP *config file* rather than a launch command — Snyk `agent-scan`
+  (formerly `mcp-scan`) among them — cannot be driven this way without a wrapper you write.
+  R5 claims "any scanner, no adapter"; measured against the most prominent tool in the
+  ecosystem, that claim is currently too strong. A config-file target mode is under
+  consideration.
+- **A cloud-backed scanner's verdict may not be about your specimen.** At least one scanner
+  warns that it can return results from vendor-side recognition of a server rather than
+  from inspecting the one in front of it. poison-garden cannot detect this, so a result
+  document cannot distinguish "examined the specimen" from "recognised something like it".
+  If your scanner works that way, say so in your submission.
 - **Real containment is not implemented.** See [Safety](#safety). A seatbelt profile or
   container is tracked work, not a shipped feature.
 - **The egress class demonstrates an undeclared socket, not a remote destination.** A corpus
