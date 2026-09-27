@@ -80,6 +80,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="scanner command template containing {target}, e.g. \"mcp-scan {target}\"",
     )
     p_st.add_argument(
+        "--error-on",
+        default="",
+        help="comma-separated exit codes meaning YOUR SCANNER FAILED, not that it found "
+             "nothing. Those specimens become `error` and leave both numerator and "
+             "denominator. Measured need: at least one MCP scanner exits 0 while printing "
+             "that its scan could not be trusted, which otherwise scores as clean.",
+    )
+    p_st.add_argument(
         "--flag-on",
         default="nonzero",
         help="'nonzero' (default) or a minimum exit code that counts as flagged",
@@ -101,6 +109,14 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="identity recorded in the document (default: the template's program name). "
              "The full template is never recorded — it may contain a token.",
+    )
+    p_run.add_argument(
+        "--error-on",
+        default="",
+        help="comma-separated exit codes meaning YOUR SCANNER FAILED, not that it found "
+             "nothing. Those specimens become `error` and leave both numerator and "
+             "denominator. Measured need: at least one MCP scanner exits 0 while printing "
+             "that its scan could not be trusted, which otherwise scores as clean.",
     )
     p_run.add_argument(
         "--flag-on",
@@ -154,6 +170,7 @@ def main(argv: list[str] | None = None) -> int:
                 corpus_root=args.corpus,
                 scanner=args.scanner,
                 flag_on=args.flag_on,
+                error_on=args.error_on,
                 timeout=args.timeout,
             )
 
@@ -166,6 +183,7 @@ def main(argv: list[str] | None = None) -> int:
                 out=args.out,
                 scanner_name=args.scanner_name,
                 flag_on=args.flag_on,
+                error_on=args.error_on,
                 timeout=args.timeout,
                 sarif=args.sarif,
             )

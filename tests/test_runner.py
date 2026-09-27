@@ -1183,3 +1183,65 @@ def test_caught_and_missed_are_always_complementary(corpus):
             f"{entry.klass.value}: caught({entry.caught}) + missed({len(entry.missed)}) "
             f"!= total({entry.total})"
         )
+
+
+# --- R24: "the scanner failed" must not score as "the scanner found nothing" -------------
+
+
+def test_a_self_reported_failure_exit_code_becomes_error_not_clean():
+    """REGRESSION, measured against a real tool.
+
+    `velox-mcp-audit` exits 0 while printing "Do NOT trust this scan result" after a failed
+    introspection. Under the default mapping that is a CLEAN verdict: a scanner that just
+    said it could not do its job is recorded as having examined the specimen and found it
+    innocent. That is a silent miss — the failure R7 exists to prevent — arriving through
+    the exit code rather than through a broken specimen.
+    """
+    mapping = ExitCodeMapping(error_on=(2,))
+    assert mapping.verdict_for(2) is Verdict.ERROR
+    # Under the default it would have been a finding, which is the opposite mistake.
+    assert ExitCodeMapping().verdict_for(2) is Verdict.FLAGGED
+
+
+def test_error_on_is_checked_before_the_flag_threshold():
+    """A code meaning failure must not also be read as a finding.
+
+    Under `nonzero` — the default — every non-zero code is a finding, so ordering decides
+    it. If the threshold were consulted first, `--error-on` would be silently inert exactly
+    where it is needed.
+    """
+    mapping = ExitCodeMapping(flag_on="nonzero", error_on=(3,))
+    assert mapping.verdict_for(3) is Verdict.ERROR, "flag threshold won over error_on"
+    assert mapping.verdict_for(1) is Verdict.FLAGGED
+
+
+def test_error_on_defaults_to_empty_so_nothing_changes_for_existing_users():
+    """CONTROL (P49). Guessing a failure code would reclassify honest clean verdicts as
+    errors, removing specimens from both numerator and denominator — the opposite error,
+    and just as silent."""
+    mapping = ExitCodeMapping()
+    assert mapping.error_on == ()
+    for code in (0, 1, 2, 7, 42):
+        assert mapping.verdict_for(code) is not Verdict.ERROR
+
+
+def test_the_mapping_description_records_error_codes():
+    """R6: the document records how a number became a verdict. A reader cannot recompute
+    a verdict they cannot see the rule for."""
+    described = ExitCodeMapping(error_on=(2, 9)).describe()
+    assert "2" in described and "9" in described
+    assert "self-reported failure" in described
+    # And the clause is ABSENT by default, or it would describe a rule nobody configured.
+    # (The default legitimately ends "(signal) -> error", so check for the clause itself.)
+    assert "self-reported failure" not in ExitCodeMapping().describe()
+
+
+def test_error_on_is_parsed_at_the_boundary_not_on_the_first_specimen():
+    """P6, and the same mistake `--flag-on banana` made: it spawned every specimen,
+    scanned one, then died with a bare ValueError after the work was done."""
+    from poison_garden.commands import parse_error_codes
+
+    assert parse_error_codes("") == ()
+    assert parse_error_codes(" 2 , 9 ") == (2, 9)
+    with pytest.raises(ValueError, match="banana"):
+        parse_error_codes("2,banana")

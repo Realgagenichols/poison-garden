@@ -35,8 +35,9 @@
 
 > ⚠️ This repository contains intentionally malicious MCP servers, for defensive security
 > testing. **The specimens shipped here** are demonstrative rather than weaponized — they
-> read only decoy credentials, and every socket they open goes to loopback — no packet can
-> leave your machine. Both are enforced by tests. **The harness is not a sandbox.** Read [Safety](#safety) before running anything.
+> read only decoy credentials, and every socket they open goes to loopback. Both are
+> enforced by tests. **That covers the specimens, not your scanner** — see
+> [Safety](#safety). **The harness is not a sandbox.** Read [Safety](#safety) before running anything.
 
 There are now more than a dozen MCP security scanners. Nearly all of them measure the same
 thing: **what a server declares.** They read `tools/list`, pattern-match the text, and report.
@@ -170,10 +171,28 @@ uv run poison-garden selftest --scanner "your-scanner {target}"
 
 **The interface `{target}` assumes.** It expands to the command that *launches* one
 specimen — an interpreter and a path, substituted as argv, never through a shell — and your
-scanner signals findings by **exit code**. If your scanner instead takes an MCP **config
-file** (several do, including Snyk's `agent-scan`, formerly `mcp-scan`), `{target}` will
-hand it an interpreter path to parse as JSON and it will not work. That gap is real and
-open; see [Limitations](#limitations).
+scanner signals findings by **exit code**.
+
+If your scanner wants that command as a **single quoted string** rather than as separate
+argv elements, embed the placeholder and it is joined for you — verified working against
+Cisco's scanner:
+
+```bash
+--scanner 'cisco-ai-mcp-scanner --analyzers yara stdio --stdio-command={target}'
+--scanner 'velox-mcp-audit --stdio={target}'
+```
+
+If your scanner instead takes an MCP **config file** (Snyk's `agent-scan`, formerly
+`mcp-scan`, among them), `{target}` will hand it an interpreter path to parse as JSON and it
+will not work. That gap is real and open — see [Limitations](#limitations).
+
+**If your scanner has an exit code meaning it *failed*, declare it** with `--error-on`.
+Otherwise a failed scan scores as a clean one: at least one MCP scanner exits 0 while
+printing that its result should not be trusted, which reads as "examined it, found nothing."
+
+```bash
+uv run poison-garden run --scanner "…" --error-on 2 --out result.json
+```
 
 ```bash
 # Run YOUR scanner over the corpus.
@@ -331,6 +350,20 @@ interesting row is `scanner-aware`, which frisk misses.
 repository contains deliberately malicious code and you are entitled to know what does and does
 not protect you.
 
+**The loopback guarantee covers the specimens, not your scanner.** An earlier version of
+this banner said "no packet can leave your machine". Scoped to specimens that was true and
+it is enforced by tests — but it is not the promise a reader takes from it. You run *your*
+scanner over this corpus, and several MCP scanners are cloud-backed: they upload what they
+inspect. Running the documented quickstart with one of those sends 97 deliberately
+malicious server definitions to a third party. poison-garden has no way to detect that and
+does not try to stop it; it is your scanner and your call. It should simply not be
+discovered after the fact from a sentence of ours.
+
+A related consequence for the figures: at least one scanner warns it may return results
+from vendor-side recognition of a server rather than from inspecting the one in front of
+it. A verdict reached that way is not a measurement of this corpus, and nothing in a result
+document can distinguish the two.
+
 What the harness *does*: it pre-flights each specimen with `$HOME` pointed at a throwaway
 directory seeded with fake credentials, hands it a loopback address to "exfiltrate" to, and
 strips the environment down to a short allowlist.
@@ -363,13 +396,15 @@ thing than containment.
 
 Stated plainly, because a benchmark that oversells itself is worse than none.
 
-- **The launch-command interface does not fit every scanner.** `{target}` expands to a
-  command that launches a specimen, and the verdict comes from the scanner's exit code.
-  Scanners that take an MCP *config file* rather than a launch command — Snyk `agent-scan`
-  (formerly `mcp-scan`) among them — cannot be driven this way without a wrapper you write.
-  R5 claims "any scanner, no adapter"; measured against the most prominent tool in the
-  ecosystem, that claim is currently too strong. A config-file target mode is under
-  consideration.
+- **Two things limit "any scanner, no adapter", and the smaller one is the target shape.**
+  Of six MCP scanners surveyed, three take a launch command, three take a config file, and
+  three take both — so neither shape is the general case. `{target}` reaches the
+  launch-command ones, including those wanting a single quoted string (see Quickstart).
+  Config-only scanners need a wrapper you write; a `{config}` mode is deferred until a
+  vendor asks, so it can be built against a real invocation rather than a guess.
+  **The binding constraint is exit codes, not shape**: at least one scanner has no
+  exit-code-on-finding flag at all, so R6 cannot reach it whatever the target looks like.
+  R5's claim is currently too strong and this is the honest extent of it.
 - **A cloud-backed scanner's verdict may not be about your specimen.** At least one scanner
   warns that it can return results from vendor-side recognition of a server rather than
   from inspecting the one in front of it. poison-garden cannot detect this, so a result

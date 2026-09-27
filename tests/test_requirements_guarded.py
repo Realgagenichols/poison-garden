@@ -175,9 +175,11 @@ REQUIRED_README_CLAUSES = (
     ("decoy", "S4: specimens read decoys"),
     ("loopback", "S4: egress goes to a loopback sink"),
     (
-        "no packet can",
-        "S4: specimens now DO open sockets, so the banner must say why that is safe "
-        "rather than claiming no network activity happens at all",
+        "covers the specimens, not your scanner",
+        "S4/S5: the loopback guarantee is about SPECIMENS. It said 'no packet can leave "
+        "your machine', which a reader takes as covering the whole run — but they run "
+        "their own scanner, and several are cloud-backed. True-but-misleading is the "
+        "failure mode this project refuses everywhere else.",
     ),
 )
 

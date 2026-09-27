@@ -63,6 +63,20 @@ class ExitCodeMapping:
     """How an exit code became a verdict. Recorded in the document so a reader can check."""
 
     flag_on: str = "nonzero"
+    # Exit codes meaning "the scanner failed", not "the scanner found nothing" (R24).
+    #
+    # Measured against a real tool: `velox-mcp-audit` exits **0** while printing "Do NOT
+    # trust this scan result" after a failed introspection. Under the default mapping that
+    # is a CLEAN verdict — a scanner that just said it could not do its job is recorded as
+    # having examined the specimen and found it innocent. That is a silent miss, which is
+    # the failure R7 exists to prevent, arriving through the exit code rather than through
+    # a broken specimen.
+    #
+    # Left empty by default, deliberately. Which code a scanner uses for its own failure is
+    # a fact only its operator knows, and guessing one would reclassify honest clean
+    # verdicts as errors — removing specimens from both numerator and denominator, which is
+    # the opposite error and just as silent.
+    error_on: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         """Validate at the boundary, not on the first specimen (P6).
@@ -85,6 +99,11 @@ class ExitCodeMapping:
         # conclusion, so neither do we.
         if exit_code < 0:
             return Verdict.ERROR
+        # Checked BEFORE the flag threshold. A scanner that failed has reached no
+        # conclusion, and a code that means failure must not also be read as a finding —
+        # which it would be under `nonzero`, the default.
+        if exit_code in self.error_on:
+            return Verdict.ERROR
         if self.flag_on == "nonzero":
             return Verdict.FLAGGED if exit_code != 0 else Verdict.CLEAN
         threshold = int(self.flag_on)
@@ -92,10 +111,16 @@ class ExitCodeMapping:
 
     def describe(self) -> str:
         if self.flag_on == "nonzero":
-            return "exit != 0 -> flagged; exit == 0 -> clean; exit < 0 (signal) -> error"
-        return (
-            f"exit >= {self.flag_on} -> flagged; below -> clean; exit < 0 (signal) -> error"
-        )
+            base = "exit != 0 -> flagged; exit == 0 -> clean; exit < 0 (signal) -> error"
+        else:
+            base = (
+                f"exit >= {self.flag_on} -> flagged; below -> clean; "
+                "exit < 0 (signal) -> error"
+            )
+        if self.error_on:
+            codes = ", ".join(str(c) for c in sorted(self.error_on))
+            base += f"; exit in ({codes}) -> error (scanner self-reported failure)"
+        return base
 
 
 def preflight(specimen: Specimen, env: dict[str, str], timeout: float = 20.0) -> str | None:

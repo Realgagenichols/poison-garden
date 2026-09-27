@@ -31,6 +31,28 @@ from poison_garden.corpus.models import ManifestError
 from poison_garden.corpus.validate import validate_corpus
 
 
+def parse_error_codes(raw: str) -> tuple[int, ...]:
+    """Parse `--error-on`, failing at the boundary rather than on the first specimen (P6).
+
+    `--flag-on banana` once spawned every specimen, scanned one, then died with a bare
+    ValueError after the work was done. Same class of mistake, so the same treatment.
+    """
+    if not raw.strip():
+        return ()
+    codes: list[int] = []
+    for piece in raw.split(","):
+        piece = piece.strip()
+        if not piece:
+            continue
+        try:
+            codes.append(int(piece))
+        except ValueError as exc:
+            raise ValueError(
+                f"--error-on takes comma-separated exit codes, got {piece!r}"
+            ) from exc
+    return tuple(codes)
+
+
 def cmd_validate(corpus_root: str) -> int:
     """Validate manifests and twin coverage (R3)."""
     try:
@@ -67,6 +89,7 @@ def cmd_run(
     out: str,
     scanner_name: str | None = None,
     flag_on: str = "nonzero",
+    error_on: str = "",
     timeout: float = 120.0,
     sarif: bool = False,
 ) -> int:
@@ -87,7 +110,7 @@ def cmd_run(
         print(f"scanner template: {exc}", file=sys.stderr)
         return EXIT_TOOL_ERROR
 
-    mapping = ExitCodeMapping(flag_on=flag_on)
+    mapping = ExitCodeMapping(flag_on=flag_on, error_on=parse_error_codes(error_on))
 
     # Captured BEFORE the run: this is the corpus the figures describe.
     hash_before = corpus_hash(corpus)
@@ -132,7 +155,7 @@ def cmd_run(
 
 
 def cmd_selftest(corpus_root: str, scanner: str, flag_on: str = "nonzero",
-                 timeout: float = 120.0) -> int:
+                 error_on: str = "", timeout: float = 120.0) -> int:
     """Check a scanner command is wired up, BEFORE spending a full run on it (R22).
 
     The gap this closes, found by putting the submission path in front of a reader who had
@@ -165,7 +188,7 @@ def cmd_selftest(corpus_root: str, scanner: str, flag_on: str = "nonzero",
         return EXIT_TOOL_ERROR
 
     corpus = load_corpus(corpus_root)
-    mapping = ExitCodeMapping(flag_on=flag_on)
+    mapping = ExitCodeMapping(flag_on=flag_on, error_on=parse_error_codes(error_on))
 
     # The easiest things in the corpus: overt, declaration-resident, plain ASCII. If a
     # scanner flags nothing here it will flag nothing anywhere.
