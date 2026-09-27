@@ -52,6 +52,7 @@ ALLOWED_KEYS = frozenset(
         "attributed", "sarif_note",
         "per_class", "class", "caught", "total", "recall", "missed", "errored",
         "recall_ci95", "sufficient_n",
+        "specimens_independent", "tiers_verified",
         "by_difficulty", "overt", "moderate", "subtle",
         "false_positives", "specimens", "benign_total", "rate",
         "errors",
@@ -228,6 +229,14 @@ def build_document(
                 # R19. False means: do not quote the recall above as a property of the
                 # scanner. It is a property of one or two specimens.
                 "sufficient_n": c.sufficient,
+                # R18/R23. False means one probe exposes every specimen in this class, so
+                # the interval above is too narrow — by an amount the corpus deliberately
+                # does not guess at. Rides on the figure rather than living in prose two
+                # documents away, because a caveat a reader has to go and find is a caveat
+                # that does not qualify anything.
+                "specimens_independent": c.specimens_are_independent,
+                # R20. False means these difficulty labels disagree with blind readers.
+                "tiers_verified": c.tiers_verified,
                 # R20. Counts, never a rate — see `ClassScore.by_difficulty`. Tiers with no
                 # specimens are dropped rather than published as `0/0`, which reads as a
                 # failure and is not one.

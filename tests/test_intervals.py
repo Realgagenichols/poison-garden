@@ -332,3 +332,87 @@ def test_a_pre_R19_document_is_marked_from_its_own_counts(tmp_path: Path):
 
     page = _rendered(tmp_path, [{"class": "injection", "caught": 0, "total": 1}])
     assert f"0/1 {INSUFFICIENT_MARK}" in page
+
+
+# --- R23: the independence caveat, and R20's tier caveat, ride on the figure -------------
+
+
+def test_behavioural_classes_are_marked_non_independent(corpus):
+    """R18/R23. One probe exposes every specimen in these, so the interval is too narrow.
+
+    Measured by `scripts/measure_probe_coverage.py`: 6/6 for each. The flag sits in the
+    per-class entry rather than in prose, because a caveat a reader has to go and find is
+    a caveat that qualifies nothing.
+    """
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    doc = build_document(corpus, results, "stub", ExitCodeMapping())
+    flags = {e["class"]: e["specimens_independent"] for e in doc.payload["per_class"]}
+
+    for klass in ("scanner-aware", "namesake-rugpull", "exfil-enumeration", "egress"):
+        assert flags.get(klass) is False, (
+            f"{klass} has measured probe coverage 6/6 but is published as independent"
+        )
+
+
+def test_declaration_classes_are_NOT_marked_non_independent(corpus):
+    """FALSIFICATION (P49). A flag that is false everywhere carries no information.
+
+    Declaration classes are deliberately not probe-coverage-measured: their payload is
+    catalog-resident, so one enumeration exposes every member trivially. That is a fact
+    about the cheapness of observation, not about redundancy.
+    """
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    doc = build_document(corpus, results, "stub", ExitCodeMapping())
+    flags = {e["class"]: e["specimens_independent"] for e in doc.payload["per_class"]}
+
+    independent = [k for k, v in flags.items() if v]
+    assert independent, "every class is flagged non-independent; the flag says nothing"
+    for klass in ("injection", "hidden-content", "sensitive-params"):
+        assert flags.get(klass) is True, f"{klass} should not carry the coverage caveat"
+
+
+def test_behavioural_tiers_are_marked_unverified(corpus):
+    """R20. These labels match blind readers 46% of the time against 79% elsewhere."""
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    doc = build_document(corpus, results, "stub", ExitCodeMapping())
+    verified = {e["class"]: e["tiers_verified"] for e in doc.payload["per_class"]}
+
+    assert verified.get("scanner-aware") is False
+    assert verified.get("credential-access") is False
+    # And the complement, or the flag is decoration.
+    assert verified.get("injection") is True
+    assert any(v for v in verified.values()), "no class has verified tiers"
+
+
+def test_the_caveats_do_not_suppress_the_figures_they_qualify(corpus):
+    """R20's finding was label error, so tiers are FLAGGED rather than withdrawn.
+
+    Twin tiers were withdrawn; these were not, and the distinction rests on measurement:
+    behavioural raters agree with *each other* more than declaration raters do (82% vs
+    73%), so the disagreement is with the shipped label, not between readers. Withdrawing
+    would delete 30 of 67 `by_difficulty` slots and the "overt misses are coverage gaps"
+    finding with them.
+    """
+    results = [
+        SpecimenResult(s.id, Verdict.CLEAN if s.is_benign else Verdict.FLAGGED, 1)
+        for s in corpus.specimens
+    ]
+    doc = build_document(corpus, results, "stub", ExitCodeMapping())
+    for entry in doc.payload["per_class"]:
+        if not entry["tiers_verified"]:
+            assert entry["by_difficulty"], (
+                f"{entry['class']} tiers were suppressed rather than flagged"
+            )
+        assert entry["recall_ci95"] is not None, (
+            f"{entry['class']} interval was suppressed; R18 requires it be published "
+            "with its caveat, not withheld"
+        )

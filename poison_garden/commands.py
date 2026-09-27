@@ -131,6 +131,101 @@ def cmd_run(
     return EXIT_OK
 
 
+def cmd_selftest(corpus_root: str, scanner: str, flag_on: str = "nonzero",
+                 timeout: float = 120.0) -> int:
+    """Check a scanner command is wired up, BEFORE spending a full run on it (R22).
+
+    The gap this closes, found by putting the submission path in front of a reader who had
+    not written it: the benign twins catch a scanner that flags *everything*, and nothing
+    catches one that flags *nothing*. A wrapper whose exit codes are not plumbed through
+    produces a schema-valid, CI-passing document reading 0 caught across every class and
+    0 false positives — indistinguishable, in the artifact, from a scanner that genuinely
+    detects nothing.
+
+    So this is advisory and never a refusal on the full run. A scanner that truly detects
+    nothing is entitled to publish that, and suppressing it would be the corpus editing
+    someone's result. What this does is let the author tell the two apart in thirty seconds
+    instead of after a 97-specimen run.
+
+    It drives the smallest discriminating pair: specimens whose tell sits in plain ASCII in
+    the served catalog, and benign twins. A correctly wired scanner distinguishes them. One
+    that returns the same code for both is either unwired or has no rules at all, and the
+    message says how to tell.
+    """
+    from poison_garden.corpus.loader import load_corpus
+    from poison_garden.corpus.models import Class, Difficulty
+    from poison_garden.runner.execute import ExitCodeMapping, Verdict, scan_one
+    from poison_garden.runner.sandbox import sandbox
+    from poison_garden.runner.target import ScannerTemplateError, parse_scanner
+
+    try:
+        command = parse_scanner(scanner)
+    except ScannerTemplateError as exc:
+        print(f"scanner template is unusable: {exc}", file=sys.stderr)
+        return EXIT_TOOL_ERROR
+
+    corpus = load_corpus(corpus_root)
+    mapping = ExitCodeMapping(flag_on=flag_on)
+
+    # The easiest things in the corpus: overt, declaration-resident, plain ASCII. If a
+    # scanner flags nothing here it will flag nothing anywhere.
+    blatant = [
+        s for s in corpus.malicious
+        if s.difficulty is Difficulty.OVERT and s.manifest.declaration
+        and not (s.classes & {Class.SCANNER_AWARE, Class.EGRESS})
+    ][:3]
+    twins = [s for s in corpus.benign][:2]
+    if not blatant or not twins:
+        print("corpus has no overt declaration specimens to probe with", file=sys.stderr)
+        return EXIT_TOOL_ERROR
+
+    print(f"probing {command.program} with {len(blatant)} blatant specimen(s) "
+          f"and {len(twins)} benign twin(s)\n")
+    results: dict[str, Verdict] = {}
+    for specimen in blatant + twins:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp, sandbox(Path(tmp)) as (box, _sink):
+            outcome = scan_one(specimen, command, box.env(), mapping, timeout=timeout)
+        results[specimen.id] = outcome.verdict
+        kind = "malicious" if specimen in blatant else "benign   "
+        print(f"  {kind}  {str(outcome.verdict):<8} exit={outcome.exit_code}  {specimen.id}")
+
+    flagged_bad = sum(results[s.id] is Verdict.FLAGGED for s in blatant)
+    flagged_good = sum(results[s.id] is Verdict.FLAGGED for s in twins)
+    errored = sum(v is Verdict.ERROR for v in results.values())
+
+    print()
+    if errored:
+        print(f"{errored} specimen(s) errored. The scanner could not be asked about them, so "
+              "a full run would exclude them from both numerator and denominator.",
+              file=sys.stderr)
+        return EXIT_TOOL_ERROR
+    if flagged_bad == 0 and flagged_good == 0:
+        print(
+            "Your scanner flagged NOTHING, including specimens whose attack text is in "
+            "plain ASCII in the served catalog.\n\n"
+            "That is usually a wiring problem rather than a detection result. Check:\n"
+            f"  - does `{command.program}` exit non-zero when it finds something?\n"
+            "    (use --flag-on if it signals with a different code)\n"
+            "  - does {target} reach it as a command to launch, not a path to read?\n"
+            "    poison-garden substitutes an interpreter plus a script path as argv.\n\n"
+            "A full run would still produce a valid document — it would simply read 0 "
+            "everywhere, which is why this check exists.",
+            file=sys.stderr,
+        )
+        return EXIT_TOOL_ERROR
+    if flagged_bad == len(blatant) and flagged_good == len(twins):
+        print("Your scanner flagged everything, including the benign twins. That scores "
+              "full recall and a 100% false-positive rate. Check the exit-code mapping.",
+              file=sys.stderr)
+        return EXIT_TOOL_ERROR
+
+    print(f"Looks wired: {flagged_bad}/{len(blatant)} blatant flagged, "
+          f"{flagged_good}/{len(twins)} twins flagged.")
+    print("Run the full corpus with `poison-garden run`.")
+    return EXIT_OK
+
+
 def cmd_validate_result(path: str) -> int:
     """Validate submitted result document(s). Never modifies them (R15)."""
     from poison_garden.leaderboard.validate import validate_directory, validate_document

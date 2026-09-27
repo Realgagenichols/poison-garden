@@ -16,7 +16,7 @@
       "sensitive-params-twin-credential-rotation"
     ]
   },
-  "generated_utc": "2026-09-14T14:01:25Z",
+  "generated_utc": "2026-09-27T15:25:52Z",
   "notes": "No composite score is reported, by design (R10). An aggregate hides the lopsided class, which is usually the interesting one, and invites the rank-ordering poison-garden refuses to perform. Recall and false positives are reported together because either alone misrepresents the run.",
   "per_class": [
     {
@@ -46,7 +46,9 @@
         0.3,
         0.9032
       ],
+      "specimens_independent": true,
       "sufficient_n": true,
+      "tiers_verified": false,
       "total": 6
     },
     {
@@ -80,7 +82,9 @@
         0.0,
         0.3903
       ],
+      "specimens_independent": false,
       "sufficient_n": true,
+      "tiers_verified": false,
       "total": 6
     },
     {
@@ -114,7 +118,9 @@
         0.0,
         0.3903
       ],
+      "specimens_independent": false,
       "sufficient_n": true,
+      "tiers_verified": false,
       "total": 6
     },
     {
@@ -141,7 +147,9 @@
         0.6097,
         1.0
       ],
+      "specimens_independent": true,
       "sufficient_n": true,
+      "tiers_verified": true,
       "total": 6
     },
     {
@@ -174,7 +182,9 @@
         0.0301,
         0.5635
       ],
+      "specimens_independent": true,
       "sufficient_n": true,
+      "tiers_verified": true,
       "total": 6
     },
     {
@@ -207,7 +217,9 @@
         0.0301,
         0.5635
       ],
+      "specimens_independent": true,
       "sufficient_n": true,
+      "tiers_verified": true,
       "total": 6
     },
     {
@@ -238,7 +250,9 @@
         0.2505,
         0.8418
       ],
+      "specimens_independent": true,
       "sufficient_n": true,
+      "tiers_verified": true,
       "total": 7
     },
     {
@@ -271,7 +285,9 @@
         0.0301,
         0.5635
       ],
+      "specimens_independent": false,
       "sufficient_n": true,
+      "tiers_verified": false,
       "total": 6
     },
     {
@@ -305,7 +321,9 @@
         0.0,
         0.3903
       ],
+      "specimens_independent": false,
       "sufficient_n": true,
+      "tiers_verified": false,
       "total": 6
     },
     {
@@ -336,7 +354,9 @@
         0.1876,
         0.8124
       ],
+      "specimens_independent": true,
       "sufficient_n": true,
+      "tiers_verified": true,
       "total": 6
     },
     {
@@ -367,7 +387,9 @@
         0.1876,
         0.8124
       ],
+      "specimens_independent": true,
       "sufficient_n": true,
+      "tiers_verified": true,
       "total": 6
     }
   ],
@@ -379,7 +401,7 @@
   "verdicts": [
     {
       "attributed": null,
-      "duration_s": 0.55,
+      "duration_s": 1.43,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -388,7 +410,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -397,7 +419,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -415,7 +437,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -433,7 +455,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -442,7 +464,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -451,7 +473,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -469,7 +491,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -496,7 +518,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -505,7 +527,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -523,7 +545,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -541,7 +563,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -559,7 +581,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -568,7 +590,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -595,7 +617,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -604,7 +626,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.33,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -613,7 +635,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.33,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -622,7 +644,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.32,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -649,7 +671,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -658,7 +680,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -667,7 +689,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -676,7 +698,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 1,
       "sarif_note": null,
@@ -694,7 +716,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.32,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -703,7 +725,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -748,7 +770,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.35,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -766,7 +788,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -775,7 +797,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -784,7 +806,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -802,7 +824,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -856,7 +878,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.28,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -892,7 +914,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -910,7 +932,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -982,7 +1004,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1018,7 +1040,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,
@@ -1027,7 +1049,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.3,
+      "duration_s": 0.29,
       "error_reason": null,
       "exit_code": 2,
       "sarif_note": null,
@@ -1144,7 +1166,7 @@
     },
     {
       "attributed": null,
-      "duration_s": 0.29,
+      "duration_s": 0.3,
       "error_reason": null,
       "exit_code": 0,
       "sarif_note": null,

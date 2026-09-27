@@ -69,6 +69,25 @@ def build_parser() -> argparse.ArgumentParser:
         help="do not write; exit non-zero if the committed page is stale",
     )
 
+    p_st = sub.add_parser(
+        "selftest",
+        help="check your scanner command is wired up, before spending a full run on it",
+    )
+    p_st.add_argument("--corpus", default="specimens", help="corpus root (default: specimens)")
+    p_st.add_argument(
+        "--scanner",
+        required=True,
+        help="scanner command template containing {target}, e.g. \"mcp-scan {target}\"",
+    )
+    p_st.add_argument(
+        "--flag-on",
+        default="nonzero",
+        help="'nonzero' (default) or a minimum exit code that counts as flagged",
+    )
+    p_st.add_argument(
+        "--timeout", type=float, default=120.0, help="seconds allowed for the scanner per specimen"
+    )
+
     p_run = sub.add_parser("run", help="run YOUR scanner over the corpus and score it")
     p_run.add_argument("--corpus", default="specimens", help="corpus root (default: specimens)")
     p_run.add_argument(
@@ -128,6 +147,16 @@ def main(argv: list[str] | None = None) -> int:
             from poison_garden.commands import cmd_leaderboard
 
             return cmd_leaderboard(args.results, args.out, check=args.check)
+        if args.command == "selftest":
+            from poison_garden.commands import cmd_selftest
+
+            return cmd_selftest(
+                corpus_root=args.corpus,
+                scanner=args.scanner,
+                flag_on=args.flag_on,
+                timeout=args.timeout,
+            )
+
         if args.command == "run":
             from poison_garden.commands import cmd_run
 

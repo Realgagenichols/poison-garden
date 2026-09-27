@@ -27,13 +27,27 @@ MIN_ENTRIES = 3
 _ROW = re.compile(r"^\|\s*`([a-z0-9-]+)`\s*\|", re.MULTILINE)
 
 
-def count_entries(text: str) -> list[str]:
-    """Specimen ids registered as misses.
+# The register table lives under this heading. Everything above it is prose and other
+# tables, which must not be counted.
+_SECTION = "### The registered misses (N2)"
 
-    Only rows inside the "three misses" table count. A row must name a real specimen id in
-    backticks, so a placeholder line or a prose mention cannot inflate the count.
+
+def count_entries(text: str) -> list[str]:
+    """Specimen ids registered as misses, from the register table only.
+
+    The docstring always claimed "only rows inside the table count" and the code never did
+    it — `_ROW` was applied to the whole file. That went unnoticed because no other table in
+    KNOWN-MISSES.md happened to start a row with a backticked lowercase-hyphen token, until
+    a probe-coverage table did and silently inflated the count from 15 to 20. A miscount
+    here is not cosmetic: N2 is the release gate that asserts the corpus still beats its
+    author's own scanner, and inflating it is the direction that lets a too-easy corpus ship.
+
+    Scoped now, so the code does what the sentence above it says.
     """
-    return _ROW.findall(text)
+    _, _, register = text.partition(_SECTION)
+    if not register:
+        return []
+    return _ROW.findall(register)
 
 
 def main() -> int:

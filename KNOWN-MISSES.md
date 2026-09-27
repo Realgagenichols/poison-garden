@@ -119,6 +119,34 @@ every depth — so they are genuine false positives rather than mislabelled spec
   `credential-access` is 4/6 rather than 0/6. The gap this corpus measures is not
   static-versus-good; it is static-versus-behavioural, and frisk is on the right side of it.
 
+### How much of this is six tests, and how much is one repeated?
+
+Measured with `scripts/measure_probe_coverage.py`, and it qualifies every behavioural row
+above. **One observer capability exposes every specimen** in four classes:
+
+| Class | probe coverage | the single probe |
+|---|---|---|
+| `scanner-aware` | 6/6 | one realistic client profile |
+| `namesake-rugpull` | 6/6 | nine enumerations in one session |
+| `exfil-enumeration` | 6/6 | a single enumeration |
+| `egress` | 6/6 | one loopback listener |
+| `credential-access` | not measured | needs filesystem tracing |
+
+So the Wilson intervals on those rows assume six independent trials and there are not six.
+They are **too narrow**, and the corpus discloses that rather than correcting it — see R18
+for the correction that was computed, tested and rejected, because the available estimator
+turns out to measure classes differing from each other rather than specimens within a class
+being correlated.
+
+**This is an upper bound on redundancy, not an effective sample size**, and the difference
+is visible in the table above: `namesake-rugpull` has coverage 6/6 and frisk still scored
+1/6. Perfect redundancy would predict 0/6 or 6/6. Coverage says one capability suffices to
+*see* all of these; catching them still needs a rule, and rules partially succeed.
+
+Read together with the per-class table, the honest summary of frisk's behavioural result is
+not "it missed 23 separate things" but closer to "it lacks four observer capabilities, and
+23 specimens are downstream of that." That reading makes the scorecard worse, not better.
+
 ### Two signals worth reading carefully
 
 **Overt misses are coverage gaps, not subtlety.** Several classes caught **zero** of their

@@ -31,6 +31,22 @@ class ScoringRefused(Exception):
     """Refusing to emit a result that would misrepresent what was measured."""
 
 
+# Measured by `scripts/measure_probe_coverage.py`: one probe exposes every specimen in each
+# of these. Published as an upper bound on redundancy, never as an effective sample size
+# (R23) — namesake-rugpull has coverage 6/6 and frisk still scored 1/6.
+CLASSES_WITH_FULL_PROBE_COVERAGE = frozenset({
+    Class.SCANNER_AWARE, Class.NAMESAKE_RUGPULL, Class.EXFIL_ENUMERATION, Class.EGRESS,
+})
+
+# Difficulty labels measured at 46% agreement with blind readers, against 79% for
+# declaration classes (docs/tier-reliability.md). Flagged, not withdrawn: the raters agree
+# with each other more here, so it is label error and the remedy is re-tiering.
+CLASSES_WITH_UNVERIFIED_TIERS = frozenset({
+    Class.CREDENTIAL_ACCESS, Class.EGRESS, Class.EXFIL_ENUMERATION,
+    Class.NAMESAKE_RUGPULL, Class.SCANNER_AWARE,
+})
+
+
 def wilson_interval(caught: int, total: int, z: float = 1.96) -> tuple[float, float]:
     """95% confidence interval for a proportion, Wilson score method.
 
@@ -91,6 +107,30 @@ class ClassScore:
         that looks like a measurement and is not one.
         """
         return wilson_interval(self.caught, self.total)
+
+    @property
+    def specimens_are_independent(self) -> bool:
+        """False where one probe is measured to expose every specimen in the class (R23).
+
+        The Wilson interval assumes independent trials. For these classes six specimens are
+        closer to one observation repeated than to six separate ones, so the interval is too
+        narrow by an amount this corpus cannot quantify — see R18 for why it is disclosed
+        rather than corrected. This does NOT mean a scanner catching one catches all:
+        `namesake-rugpull` has coverage 6/6 and frisk scored 1/6.
+        """
+        return self.klass not in CLASSES_WITH_FULL_PROBE_COVERAGE
+
+    @property
+    def tiers_verified(self) -> bool:
+        """False where the difficulty labels are measured to disagree with blind readers.
+
+        Behavioural tiers match independent raters 46% of the time against 79% for
+        declaration tiers, and the raters agree with each other MORE on behavioural
+        specimens (82% vs 73%) — so this is label error rather than rater noise. The
+        `by_difficulty` counts for these classes are reported with that attached rather
+        than withdrawn, because the remedy is re-tiering.
+        """
+        return self.klass not in CLASSES_WITH_UNVERIFIED_TIERS
 
     @property
     def sufficient(self) -> bool:

@@ -357,3 +357,52 @@ def test_every_shipped_specimen_file_is_tracked_by_git():
         "the published hash names, and any specimen that reads them is broken for everyone "
         "but you. Check `.gitignore` — a blanket pattern is the usual cause."
     )
+
+
+def test_git_tree_corpus_hash_matches_the_release_registry():
+    """The corpus a CLONE receives must hash to the value `CORPUS_RELEASES.json` publishes.
+
+    Every result document cites a corpus hash, and `CORPUS_RELEASES.json` is what lets a
+    historical submission stay valid after the corpus moves (R4). If the tree git actually
+    ships hashes to something else, every published figure names a corpus nobody can
+    reproduce — and the person that breaks is the first external submitter, who has no way
+    to tell whether their result is comparable to anyone's.
+
+    This has already happened once. Between commits 15ca72a and 344bc2c, two specimens'
+    `.lock` data files were swallowed by a blanket `.gitignore` pattern, so public `main`
+    served a corpus that hashed differently from the registered value for roughly two and a
+    half hours. It was caught by accident.
+
+    Hashes the GIT TREE rather than the working directory, which is the whole point:
+    `test_every_shipped_specimen_file_is_tracked_by_git` catches untracked files, but that
+    is a proxy. This asks the question directly, and also catches the other direction — a
+    corpus edit whose registry entry was never updated.
+    """
+    import json
+    import subprocess
+    import tempfile
+
+    if not (REPO_ROOT / ".git").exists():
+        pytest.skip("not a git checkout; there is no tree to compare against")
+
+    registry = json.loads((REPO_ROOT / "CORPUS_RELEASES.json").read_text(encoding="utf-8"))
+    version = (REPO_ROOT / "specimens" / "CORPUS_VERSION").read_text(encoding="utf-8").strip()
+    assert version in registry, (
+        f"corpus {version} is not in CORPUS_RELEASES.json. Every released corpus must be "
+        "registered, or a result document citing it cannot be validated later."
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        archive = subprocess.run(
+            ["git", "archive", "HEAD", "specimens"],
+            cwd=REPO_ROOT, capture_output=True, check=True,
+        ).stdout
+        subprocess.run(["tar", "-x", "-C", tmp], input=archive, check=True)
+        from_git = corpus_hash(load_corpus(Path(tmp) / "specimens"))
+
+    assert from_git == registry[version], (
+        f"the corpus git ships hashes to {from_git}, but CORPUS_RELEASES.json registers "
+        f"{registry[version]} for {version}. A clone would compute a different corpus than "
+        "every published figure names. Usual cause: a specimen file exists locally but is "
+        "gitignored — check `.gitignore` for a blanket pattern."
+    )

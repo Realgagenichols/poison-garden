@@ -94,9 +94,8 @@ version  0.4.0
 hash     sha256:e0f16a9fd0835478fe2ec5038b44eb9987f0e0b883ec35fb7229a4c02097f261
 ```
 
-**3. It reports what the numbers actually support.** Every per-class figure ships with a
-95% Wilson interval, and a class too small to say anything about a scanner is rendered as
-insufficient rather than as a percentage:
+**3. It reports what the numbers actually support — including where they don't.** Every
+per-class figure ships with a 95% Wilson interval, and with the two caveats that qualify it:
 
 ```json
 {
@@ -105,6 +104,8 @@ insufficient rather than as a percentage:
   "recall": 0.0,
   "recall_ci95": [0.0, 0.3903],
   "sufficient_n": true,
+  "specimens_independent": false,
+  "tiers_verified": false,
   "by_difficulty": {
     "overt":    {"caught": 0, "total": 1},
     "moderate": {"caught": 0, "total": 4},
@@ -113,12 +114,23 @@ insufficient rather than as a percentage:
 }
 ```
 
-This exists because an earlier release got it wrong. Six of ten classes shipped a single
-malicious specimen, so the corpus published figures like `0/1` as recall `0.0` — and "0%"
-reads as *this tool has a gap here* when one observation supports anything up to 79%. Four
-classes that read as `100%` turned out to be 17%, 50%, 50% and 67% once the corpus had
-enough specimens to tell. The tier counts are there for the same reason: `6/6 overt, 0/2
-subtle` is a bug report a maintainer can act on, and `75%` is a grade.
+`specimens_independent: false` is the one that matters, and it is there because this example
+was wrong for a fortnight. The interval assumes six independent trials. A measured probe
+sweep shows **one observer capability exposes all six specimens** in this class — and in
+`scanner-aware`, `namesake-rugpull` and `egress` too. So the interval is too narrow, and the
+corpus says so rather than quietly widening it: estimating the correction needs within-class
+correlation, which is not identifiable from one outcome per specimen. The available
+estimator turns out to measure *classes differing from each other*, which is the thing
+per-class reporting exists to express. Details and the rejected correction are in
+[`SPEC.md` R18/R23](#).
+
+`tiers_verified: false` says the difficulty labels for this class disagree with blind
+readers 46% of the time. They are flagged rather than withdrawn because the raters agree
+with *each other* more here than elsewhere — so it is label error, and the fix is re-tiering.
+
+This section exists because an earlier release got the underlying thing wrong: six of ten
+classes shipped a single malicious specimen, so `0/1` printed as recall `0.0` and read as
+*this tool has a gap here* when one observation supports anything up to 79%.
 
 **4. It refuses to publish a flattering half-measurement.** Point it at a scanner that errors
 on every specimen and it declines to emit a document at all, rather than reporting a clean

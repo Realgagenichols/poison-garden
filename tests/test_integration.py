@@ -271,11 +271,22 @@ def test_known_misses_names_the_current_corpus_hash(corpus):
 
 
 def test_every_registered_miss_is_a_real_specimen(corpus):
-    """A register naming absent specimens passes its own count while measuring nothing."""
-    import re as _re
+    """A register naming absent specimens passes its own count while measuring nothing.
+
+    Uses the SAME `count_entries` the release gate uses, rather than a second regex. It had
+    its own copy, and when the gate's regex was scoped to the register section this test
+    kept the unscoped one — so the two disagreed about what "a registered miss" means and
+    the test failed on rows the gate correctly ignored. One predicate, one spelling (P95);
+    a check that parses the artifact differently from the gate it mirrors is not mirroring
+    the gate.
+    """
+    import sys as _sys
+
+    _sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from check_known_misses import count_entries
 
     register = (REPO_ROOT / "KNOWN-MISSES.md").read_text(encoding="utf-8")
-    rows = _re.findall(r"^\|\s*`([a-z0-9-]+)`\s*\|", register, _re.MULTILINE)
+    rows = count_entries(register)
     assert rows, "KNOWN-MISSES registers no specimens"
     missing = [r for r in rows if corpus.by_id(r) is None]
     assert not missing, f"register names specimens absent from the corpus: {missing}"
@@ -562,3 +573,39 @@ def test_scanner_aware_evasion_never_runs_backwards(corpus):
                 )
 
     assert not backwards, "\n".join(backwards)
+
+
+def test_the_n2_counter_ignores_tables_outside_the_register():
+    """REGRESSION: `count_entries` was applied to the whole file, not the register section.
+
+    Its docstring had always claimed "only rows inside the table count"; the regex never
+    enforced it. Nothing noticed until a probe-coverage table was added whose rows also
+    begin with a backticked lowercase-hyphen token, and the count silently went 15 → 20.
+
+    The direction is what makes it serious. An inflated count is the direction that lets a
+    too-easy corpus clear N2 — the release gate asserting the corpus still beats its own
+    author's scanner. A deflated count fails loudly; an inflated one ships.
+    """
+    import sys as _sys
+
+    _sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from check_known_misses import count_entries
+
+    register = (REPO_ROOT / "KNOWN-MISSES.md").read_text(encoding="utf-8")
+    real = count_entries(register)
+    assert real, "the register counted nothing"
+
+    # A table ABOVE the register section, shaped exactly like a register row.
+    decoy = register.replace(
+        "### The registered misses (N2)",
+        "| `not-a-specimen-at-all` | x | y |\n\n### The registered misses (N2)",
+        1,
+    )
+    assert count_entries(decoy) == real, (
+        "a table outside the register section was counted as a registered miss; the "
+        "counter is unscoped again"
+    )
+
+    # And it must still see rows that really are in the register.
+    assert "### The registered misses (N2)" in register
+    assert all("`" not in e and " " not in e for e in real)

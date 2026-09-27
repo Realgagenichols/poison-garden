@@ -58,6 +58,20 @@ jobs:
 
       # R4: the hash must be a function of corpus bytes alone. Computing it twice in
       # different orders catches any dependence on filesystem iteration order.
+      - name: KNOWN-MISSES register holds (N2)
+        # Runs on EVERY push, not only on release tags. The release-gated job below had
+        # never once executed: it is `if: startsWith(github.ref, 'refs/tags/v')` and the
+        # repository has zero tags, so it reported "skipped" in every run since the project
+        # began. A gate that has never fired is not a gate — this project applies that rule
+        # everywhere else and had exempted its own headline honesty commitment.
+        #
+        # The original deferral was sound and has expired: N2 binds at release because M1
+        # shipped declaration classes only, where frisk is strongest, so the register was
+        # legitimately empty. It now holds 15 entries against a mature corpus, and the
+        # invariant worth enforcing continuously is that every registered row still names a
+        # specimen that exists. The tag-gated job stays as the release gate.
+        run: uv run python scripts/check_known_misses.py --min 3
+
       - name: Corpus hash is stable (R4)
         run: |
           set -euo pipefail
