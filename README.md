@@ -359,10 +359,14 @@ malicious server definitions to a third party. poison-garden has no way to detec
 does not try to stop it; it is your scanner and your call. It should simply not be
 discovered after the fact from a sentence of ours.
 
-A related consequence for the figures: at least one scanner warns it may return results
-from vendor-side recognition of a server rather than from inspecting the one in front of
-it. A verdict reached that way is not a measurement of this corpus, and nothing in a result
-document can distinguish the two.
+A related consequence for the figures, with the mitigating half stated too. At least one
+scanner warns it may return results from vendor-side recognition of a server rather than
+from inspecting the one in front of it, and nothing in a result document can distinguish
+the two. What limits the damage is that **these specimens are published nowhere** — there
+is no reputation for a vendor to look up, so a cloud-backed scanner is measured on its own
+local analysis here by construction. That is a property of the corpus being synthetic and
+unlisted, not a guarantee, and it would stop holding the moment a specimen appeared in a
+vendor's training or signature set.
 
 What the harness *does*: it pre-flights each specimen with `$HOME` pointed at a throwaway
 directory seeded with fake credentials, hands it a loopback address to "exfiltrate" to, and
